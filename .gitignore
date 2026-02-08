@@ -1,0 +1,41 @@
+# Environment
+.env
+.env.backup
+.env.production
+.env.local
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.tmp
+*.swp
+
+# Zone Identifier (Windows WSL)
+*.Identifier
+
+# Database
+*.sql.gz
+*.sql.backup

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        <title>{{ config('app.name', 'Sistema Contable') }}</title>
+
+        {{-- Preamble de React Refresh para Vite en Laravel --}}
+        @viteReactRefresh
+
+        {{-- Tus entradas de Vite --}}
+        @vite(['resources/js/main.tsx', 'resources/js/index.css'])
+    </head>
+    <body class="antialiased">
+        <div id="root"></div>
+    </body>
+</html>
