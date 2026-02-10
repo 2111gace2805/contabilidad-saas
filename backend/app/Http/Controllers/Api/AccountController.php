@@ -38,6 +38,15 @@ class AccountController extends Controller
             return response()->json(['message' => 'Company ID required'], 400);
         }
 
+        // Accept frontend field names and normalize them to backend fields
+        if ($request->has('parent_account_id')) {
+            $request->merge(['parent_id' => $request->input('parent_account_id')]);
+        }
+
+        if ($request->has('allows_transactions')) {
+            $request->merge(['is_detail' => $request->input('allows_transactions')]);
+        }
+
         $validator = Validator::make($request->all(), [
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:255',
@@ -78,6 +87,15 @@ class AccountController extends Controller
         
         $account = Account::where('company_id', $companyId)->findOrFail($id);
         
+        // Normalize frontend keys
+        if ($request->has('parent_account_id')) {
+            $request->merge(['parent_id' => $request->input('parent_account_id')]);
+        }
+
+        if ($request->has('allows_transactions')) {
+            $request->merge(['is_detail' => $request->input('allows_transactions')]);
+        }
+
         $validator = Validator::make($request->all(), [
             'code' => 'sometimes|required|string|max:20',
             'name' => 'sometimes|required|string|max:255',

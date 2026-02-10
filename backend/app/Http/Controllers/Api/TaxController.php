@@ -33,7 +33,7 @@ class TaxController extends Controller
             });
         }
 
-        $taxes = $query->orderBy('code')
+        $taxes = $query->with(['debitAccount', 'creditAccount'])->orderBy('code')
             ->paginate($request->get('per_page', 15));
         
         return response()->json($taxes);
@@ -53,6 +53,8 @@ class TaxController extends Controller
             'type' => 'required|string|max:255',
             'rate' => 'required|numeric|min:0|max:100',
             'is_active' => 'boolean',
+            'debit_account_id' => 'nullable|exists:accounts,id',
+            'credit_account_id' => 'nullable|exists:accounts,id',
         ]);
 
         if ($validator->fails()) {
@@ -70,7 +72,18 @@ class TaxController extends Controller
         $data = $validator->validated();
         $data['company_id'] = $companyId;
 
+        // If account IDs provided, ensure they belong to the same company
+        foreach (['debit_account_id','credit_account_id'] as $acctKey) {
+            if (!empty($data[$acctKey])) {
+                $acct = \App\Models\Account::where('company_id', $companyId)->find($data[$acctKey]);
+                if (!$acct) {
+                    return response()->json(['message' => "La cuenta indicada en $acctKey no existe o no pertenece a la empresa"], 422);
+                }
+            }
+        }
+
         $tax = Tax::create($data);
+        $tax->load(['debitAccount', 'creditAccount']);
         
         return response()->json($tax, 201);
     }
@@ -79,7 +92,7 @@ class TaxController extends Controller
     {
         $companyId = $this->getCompanyId($request);
         
-        $tax = Tax::where('company_id', $companyId)->findOrFail($id);
+        $tax = Tax::where('company_id', $companyId)->with(['debitAccount','creditAccount'])->findOrFail($id);
         
         return response()->json($tax);
     }
@@ -90,12 +103,22 @@ class TaxController extends Controller
         
         $tax = Tax::where('company_id', $companyId)->findOrFail($id);
         
+        // Normalize account keys
+        if ($request->has('debit_account_id')) {
+            $request->merge(['debit_account_id' => $request->input('debit_account_id')]);
+        }
+        if ($request->has('credit_account_id')) {
+            $request->merge(['credit_account_id' => $request->input('credit_account_id')]);
+        }
+
         $validator = Validator::make($request->all(), [
             'code' => 'sometimes|required|string|max:50',
             'name' => 'sometimes|required|string|max:255',
             'type' => 'sometimes|required|string|max:255',
             'rate' => 'sometimes|required|numeric|min:0|max:100',
             'is_active' => 'boolean',
+            'debit_account_id' => 'nullable|exists:accounts,id',
+            'credit_account_id' => 'nullable|exists:accounts,id',
         ]);
 
         if ($validator->fails()) {
@@ -113,7 +136,20 @@ class TaxController extends Controller
             }
         }
 
-        $tax->update($validator->validated());
+        $data = $validator->validated();
+
+        // Validate account ownership if provided
+        foreach (['debit_account_id','credit_account_id'] as $acctKey) {
+            if (!empty($data[$acctKey])) {
+                $acct = \App\Models\Account::where('company_id', $companyId)->find($data[$acctKey]);
+                if (!$acct) {
+                    return response()->json(['message' => "La cuenta indicada en $acctKey no existe o no pertenece a la empresa"], 422);
+                }
+            }
+        }
+
+        $tax->update($data);
+        $tax->load(['debitAccount', 'creditAccount']);
         
         return response()->json($tax);
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calculator, Plus, Pencil, Trash2, Search, X } from 'lucide-react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { taxes } from '../../lib/api';
+import { AccountAutocomplete } from '../common/AccountAutocomplete';
 
 interface Tax {
   id: number;
@@ -10,6 +11,10 @@ interface Tax {
   type: string;
   rate: number;
   is_active: boolean;
+  debit_account_id?: number | null;
+  credit_account_id?: number | null;
+  debitAccount?: any;
+  creditAccount?: any;
 }
 
 export function TaxConfiguration() {
@@ -25,6 +30,8 @@ export function TaxConfiguration() {
     type: 'IVA',
     rate: 0,
     is_active: true,
+    debit_account_id: '' as number | '',
+    credit_account_id: '' as number | '',
   });
 
   useEffect(() => {
@@ -37,7 +44,8 @@ export function TaxConfiguration() {
     try {
       setLoading(true);
       const data = await taxes.getAll();
-      setTaxList(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : (data.data || []);
+      setTaxList(list);
     } catch (error) {
       console.error('Error loading taxes:', error);
       alert('Error al cargar los impuestos');
@@ -72,7 +80,7 @@ export function TaxConfiguration() {
       loadTaxes();
     } catch (error: any) {
       console.error('Error saving tax:', error);
-      const message = error?.response?.data?.message || 'Error al guardar el impuesto';
+      const message = (error && error.message) || (error?.errors ? Object.values(error.errors).flat().join(', ') : 'Error al guardar el impuesto');
       alert(message);
     }
   };
@@ -85,6 +93,8 @@ export function TaxConfiguration() {
       type: tax.type,
       rate: tax.rate,
       is_active: tax.is_active,
+      debit_account_id: tax.debit_account_id || '',
+      credit_account_id: tax.credit_account_id || '',
     });
     setShowModal(true);
   };
@@ -173,6 +183,8 @@ export function TaxConfiguration() {
                 <th className="text-left p-3 font-semibold text-slate-700">Código</th>
                 <th className="text-left p-3 font-semibold text-slate-700">Nombre</th>
                 <th className="text-left p-3 font-semibold text-slate-700">Tipo</th>
+                <th className="text-left p-3 font-semibold text-slate-700">Cuenta (Débito)</th>
+                <th className="text-left p-3 font-semibold text-slate-700">Cuenta (Crédito)</th>
                 <th className="text-right p-3 font-semibold text-slate-700">Tasa</th>
                 <th className="text-center p-3 font-semibold text-slate-700">Estado</th>
                 <th className="text-center p-3 font-semibold text-slate-700">Acciones</th>
@@ -195,6 +207,8 @@ export function TaxConfiguration() {
                         {tax.type}
                       </span>
                     </td>
+                    <td className="p-3 text-sm text-slate-700">{tax.debitAccount ? `${tax.debitAccount.code} - ${tax.debitAccount.name}` : '-'}</td>
+                    <td className="p-3 text-sm text-slate-700">{tax.creditAccount ? `${tax.creditAccount.code} - ${tax.creditAccount.name}` : '-'}</td>
                     <td className="p-3 text-right font-semibold">
                       {Number(tax.rate).toFixed(2)}%
                     </td>
@@ -322,6 +336,24 @@ export function TaxConfiguration() {
                 <label htmlFor="is_active" className="ml-2 text-sm text-slate-700">
                   Activo
                 </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta (Débito)</label>
+                <AccountAutocomplete
+                  value={formData.debit_account_id}
+                  onChange={(id) => setFormData({ ...formData, debit_account_id: id })}
+                  placeholder="Selecciona cuenta débito"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta (Crédito)</label>
+                <AccountAutocomplete
+                  value={formData.credit_account_id}
+                  onChange={(id) => setFormData({ ...formData, credit_account_id: id })}
+                  placeholder="Selecciona cuenta crédito"
+                />
               </div>
 
               <div className="flex gap-3 pt-4">

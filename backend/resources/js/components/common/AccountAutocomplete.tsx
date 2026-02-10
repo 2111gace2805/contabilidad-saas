@@ -10,8 +10,8 @@ interface Account {
 }
 
 interface AccountAutocompleteProps {
-  value: string;
-  onChange: (accountCode: string) => void;
+  value: number | '';
+  onChange: (accountId: number | '') => void;
   className?: string;
   placeholder?: string;
 }
@@ -37,14 +37,13 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
     try {
       const data = await accounts.getAll();
       // API client sets company via ApiClient.setCompanyId in CompanyContext
-      setAccounts(data || []);
+      setAccounts(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
       console.error('Error loading accounts:', error);
       setAccounts([]);
     }
   };
 
-  const selectedAccount = accounts.find(acc => acc.code === value);
 
   const filteredAccounts = accounts.filter(acc => {
     const term = searchTerm.toLowerCase();
@@ -96,7 +95,7 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
   };
 
   const handleSelectAccount = (account: Account) => {
-    onChange(account.code);
+    onChange(account.id);
     setSearchTerm(`${account.code} - ${account.name}`);
     setShowDropdown(false);
   };

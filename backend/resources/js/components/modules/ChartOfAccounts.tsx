@@ -462,8 +462,8 @@ export function ChartOfAccounts() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta Padre (opcional)</label>
                 <select
-                  value={formData.parent_id}
-                  onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
+                  value={formData.parent_account_id}
+                  onChange={(e) => setFormData({ ...formData, parent_account_id: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                 >
                   <option value="">Ninguna (cuenta principal)</option>

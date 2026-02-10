@@ -14,12 +14,28 @@ class Account extends Model
         'parent_id', 'level', 'is_detail', 'active',
     ];
 
+    // Expose frontend-friendly attribute names for compatibility
+    protected $appends = [
+        'parent_account_id',
+        'allows_transactions',
+    ];
+
     protected function casts(): array
     {
         return [
             'is_detail' => 'boolean',
             'active' => 'boolean',
         ];
+    }
+
+    public function getParentAccountIdAttribute()
+    {
+        return $this->parent_id;
+    }
+
+    public function getAllowsTransactionsAttribute()
+    {
+        return (bool) $this->is_detail;
     }
 
     public function company()
