@@ -41,7 +41,7 @@ class AccountingPeriodController extends Controller
         $validator = Validator::make($request->all(), [
             'fiscal_year' => 'required|integer|min:2000',
             'period_number' => 'required|integer|min:1|max:12',
-            'period_type' => 'nullable|string|max:20',
+            'period_type' => 'nullable|in:monthly,annual',
             'start_date' => 'required|date',
             'end_date' => 'required|date',
             'status' => 'required|in:open,closed',
@@ -150,31 +150,42 @@ class AccountingPeriodController extends Controller
         ];
 
         $periods = [];
-        for ($month = 1; $month <= 12; $month++) {
-            $startDate = \Carbon\Carbon::create($year, $month, 1);
-            $endDate = $startDate->copy()->endOfMonth();
 
-            $period = AccountingPeriod::create([
-                'company_id' => $companyId,
-                'fiscal_year' => $year,
-                'period_number' => $month,
-                'year' => $year,
-                'month' => $month,
-                'period_name' => $monthNames[$month] . ' ' . $year,
-                'period_type' => 'month',
-                'start_date' => $startDate->format('Y-m-d'),
-                'end_date' => $endDate->format('Y-m-d'),
-                'status' => 'open',
-                'is_closed' => false,
-            ]);
+        \DB::beginTransaction();
+        try {
+            for ($month = 1; $month <= 12; $month++) {
+                $startDate = \Carbon\Carbon::create($year, $month, 1);
+                $endDate = $startDate->copy()->endOfMonth();
 
-            $periods[] = $period;
+                $period = AccountingPeriod::create([
+                    'company_id' => $companyId,
+                    'fiscal_year' => $year,
+                    'period_number' => $month,
+                    'year' => $year,
+                    'month' => $month,
+                    'period_name' => $monthNames[$month] . ' ' . $year,
+                    // Use 'monthly' to match DB enum
+                    'period_type' => 'monthly',
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'status' => 'open',
+                    'is_closed' => false,
+                ]);
+
+                $periods[] = $period;
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'message' => '12 periods generated successfully',
+                'periods' => $periods
+            ], 201);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error generating periods: ' . $e->getMessage());
+            return response()->json(['message' => 'Error generating periods: ' . $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'message' => '12 periods generated successfully',
-            'periods' => $periods
-        ], 201);
     }
 
     public function destroy(Request $request, $id)
@@ -185,6 +196,16 @@ class AccountingPeriodController extends Controller
 
         if ($period->status === 'closed') {
             return response()->json(['message' => 'Cannot delete a closed period'], 422);
+        }
+
+        // Check if there are journal entries in this period
+        $hasEntries = \App\Models\JournalEntry::where('company_id', $companyId)
+            ->where('entry_date', '>=', $period->start_date)
+            ->where('entry_date', '<=', $period->end_date)
+            ->exists();
+
+        if ($hasEntries) {
+            return response()->json(['message' => 'Cannot delete period with existing journal entries'], 422);
         }
 
         $period->delete();

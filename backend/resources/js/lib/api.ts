@@ -193,6 +193,10 @@ export const accounts = {
   async delete(id: number) {
     return ApiClient.delete(`/accounts/${id}`);
   },
+
+  async import(data: any[]) {
+    return ApiClient.post('/accounts/import', data);
+  },
 };
 
 // Account Types API

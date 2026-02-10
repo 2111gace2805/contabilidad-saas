@@ -16,7 +16,7 @@ class AccountingPeriod extends Model
     protected $fillable = [
         'company_id', 'period_type', 'fiscal_year', 'period_number',
         'start_date', 'end_date', 'status', 'closed_at', 'closed_by',
-        'closing_entry_id', 'notes',
+        'closing_entry_id', 'notes', 'month', 'year', 'period_name',
     ];
 
     protected function casts(): array
@@ -25,6 +25,8 @@ class AccountingPeriod extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'closed_at' => 'datetime',
+            'month' => 'integer',
+            'year' => 'integer',
         ];
     }
 

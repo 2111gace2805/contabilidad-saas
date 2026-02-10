@@ -11,7 +11,29 @@ export function ChartOfAccounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
   const [segments, setSegments] = useState<AccountingSegment[]>([]);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  // Persistimos los nodos expandidos para que la UI recuerde la configuración
+  const [expandedNodesArr, setExpandedNodesArr] = usePersistedState<string[]>('chart_accounts_expanded', []);
+  const expandedNodes = new Set(expandedNodesArr);
+
+  const setExpandedNodes = (newSet: Set<string>) => {
+    setExpandedNodesArr(Array.from(newSet));
+  };
+
+  const expandAll = () => {
+    const ids: string[] = [];
+    const traverse = (accts: Account[]) => {
+      accts.forEach(acc => {
+        if (acc.children && acc.children.length > 0) {
+          ids.push(String(acc.id));
+          traverse(acc.children);
+        }
+      });
+    };
+    traverse(accounts);
+    setExpandedNodes(new Set(ids));
+  };
+
+  const collapseAll = () => setExpandedNodes(new Set());
   const [showModal, setShowModal] = usePersistedState('chart_accounts_modal', false);
   const [showSegmentHelper, setShowSegmentHelper] = useState(false);
   const [editingAccount, setEditingAccount] = usePersistedState<Account | null>('chart_accounts_editing', null);
@@ -196,6 +218,37 @@ export function ChartOfAccounts() {
     }
   };
 
+  const handleDeleteSegment = async (segmentId: number, segmentName: string) => {
+    const associatedAccounts = accounts.filter(account => account.segment_id === segmentId);
+
+    if (associatedAccounts.length > 0) {
+      alert(`No se puede eliminar el segmento "${segmentName}" porque tiene cuentas asociadas. Elimina primero las cuentas.`);
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de eliminar el segmento "${segmentName}"?`)) return;
+
+    try {
+      await segmentsApi.delete(segmentId);
+      alert('Segmento eliminado correctamente');
+      loadData();
+    } catch (error: any) {
+      console.error('Error deleting segment:', error);
+      alert('Error al eliminar segmento: ' + (error?.message || 'Error desconocido'));
+    }
+  };
+
+  const handleActivateSegment = async (segmentId: number) => {
+    try {
+      await segmentsApi.activate(segmentId);
+      alert('Segmento activado correctamente');
+      loadData();
+    } catch (error: any) {
+      console.error('Error activating segment:', error);
+      alert('Error al activar segmento: ' + (error?.message || 'Error desconocido'));
+    }
+  };
+
   const renderAccount = (account: Account, depth: number = 0) => {
     const hasChildren = account.children && account.children.length > 0;
     const isExpanded = expandedNodes.has(String(account.id));
@@ -272,13 +325,27 @@ export function ChartOfAccounts() {
             <h2 className="text-3xl font-bold text-slate-800 mb-2">Catálogo Contable</h2>
             <p className="text-slate-600">Plan de cuentas NIF</p>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Nueva Cuenta
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={expandAll}
+              className="px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+            >
+              Expandir
+            </button>
+            <button
+              onClick={collapseAll}
+              className="px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+            >
+              Colapsar
+            </button>
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Nueva Cuenta
+            </button>
+          </div>
         </div>
         {accounts.length === 0 && !loading && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

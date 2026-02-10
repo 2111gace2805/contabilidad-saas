@@ -423,7 +423,9 @@ export function SuperAdminDashboard() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {u.companies && u.companies.length > 0 ? (
-                          <span>{u.companies.length} empresa(s)</span>
+                          <span>
+                            {u.companies.map((company) => company.name).join(', ')}
+                          </span>
                         ) : (
                           <span className="text-slate-400">Sin asignar</span>
                         )}

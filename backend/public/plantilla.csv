@@ -1,0 +1,6 @@
+code,name,account_type,nature,parent_code,level,is_postable,affects_tax,tax_type
+1001,Activo Circulante,Activo,DEBE,,1,true,false,
+2001,Pasivo Circulante,Pasivo,HABER,,1,true,false,
+3001,Capital Social,Capital,HABER,,1,true,false,
+4001,Ingresos,Ingresos,HABER,,1,true,false,
+5001,Gastos,Gastos,DEBE,,1,true,false,

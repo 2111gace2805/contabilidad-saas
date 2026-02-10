@@ -16,12 +16,21 @@ class AccountType extends Model
         'affects_balance', 'affects_results', 'sort_order',
     ];
 
+    // Append computed attribute to API responses
+    protected $appends = ['normal_balance'];
+
     protected function casts(): array
     {
         return [
             'affects_balance' => 'boolean',
             'affects_results' => 'boolean',
         ];
+    }
+
+    // Computed attribute to return frontend-friendly value
+    public function getNormalBalanceAttribute()
+    {
+        return $this->nature === 'deudora' ? 'debit' : 'credit';
     }
 
     public function company()

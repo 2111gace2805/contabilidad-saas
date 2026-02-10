@@ -7,8 +7,9 @@ interface AccountType {
   id: number;
   code: string;
   name: string;
-  category: string;
+  category?: string;
   normal_balance: 'debit' | 'credit';
+  nature?: string; // backend uses 'nature' as 'deudora'|'acreedora'
 }
 
 export function AccountTypesManagement() {
@@ -37,7 +38,16 @@ export function AccountTypesManagement() {
     try {
       const response = await ApiClient.get<any>('/account-types?per_page=100');
       const list = Array.isArray(response) ? response : (response.data || []);
-      setAccountTypes(list);
+      // Normalize backend fields to expected frontend interface
+      const normalized = list.map((t: any) => ({
+        id: t.id,
+        code: t.code,
+        name: t.name,
+        category: t.category || '',
+        normal_balance: (t.normal_balance ? t.normal_balance : (t.nature === 'deudora' ? 'debit' : 'credit')) as 'debit' | 'credit',
+        nature: t.nature,
+      }));
+      setAccountTypes(normalized);
     } catch (error) {
       console.error('Error loading account types:', error);
     } finally {
@@ -47,10 +57,19 @@ export function AccountTypesManagement() {
 
   const handleSave = async () => {
     try {
+      // Map frontend fields to backend expected fields
+      const payload: any = {
+        code: formData.code,
+        name: formData.name,
+        nature: formData.normal_balance === 'debit' ? 'deudora' : 'acreedora',
+        affects_balance: true,
+        affects_results: formData.category === 'revenue' || formData.category === 'expense',
+      };
+
       if (editing) {
-        await ApiClient.put(`/account-types/${editing.id}`, formData);
+        await ApiClient.put(`/account-types/${editing.id}`, payload);
       } else {
-        await ApiClient.post('/account-types', formData);
+        await ApiClient.post('/account-types', payload);
       }
 
       setShowModal(false);
@@ -59,7 +78,14 @@ export function AccountTypesManagement() {
       loadAccountTypes();
     } catch (error: any) {
       console.error('Error saving account type:', error);
-      alert('Error al guardar: ' + (error?.message || 'Error desconocido'));
+      // show backend validation errors if any
+      if (error?.response?.data?.errors) {
+        const errs = error.response.data.errors;
+        const messages = Object.keys(errs).map(k => `${k}: ${errs[k].join(', ')}`).join('\n');
+        alert('Error al guardar:\n' + messages);
+      } else {
+        alert('Error al guardar: ' + (error?.message || 'Error desconocido'));
+      }
     }
   };
 
@@ -68,8 +94,8 @@ export function AccountTypesManagement() {
     setFormData({
       code: type.code,
       name: type.name,
-      category: type.category as any,
-      normal_balance: type.normal_balance,
+      category: (type.category as any) || 'asset',
+      normal_balance: type.nature === 'deudora' ? 'debit' : 'credit',
     });
     setShowModal(true);
   };

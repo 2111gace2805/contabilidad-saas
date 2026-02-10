@@ -159,8 +159,6 @@ CREATE TABLE IF NOT EXISTS accounting_periods (
   period_type ENUM('monthly', 'annual') NOT NULL,
   fiscal_year INT NOT NULL,
   period_number INT NOT NULL CHECK (period_number >= 0 AND period_number <= 12),
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL CHECK (end_date > start_date),
   status ENUM('open', 'closed') NOT NULL DEFAULT 'open',
   closed_at DATETIME,
   closed_by CHAR(36),

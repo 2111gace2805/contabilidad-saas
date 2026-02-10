@@ -22,60 +22,73 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create SUPER ADMIN user
-        $superAdmin = User::create([
-            'name' => 'Super Admin',
-            'email' => 'superadmin@example.com',
-            'password' => Hash::make('password'),
-            'active' => true,
-            'is_super_admin' => true,
-        ]);
+        // Create SUPER ADMIN user (idempotent)
+        $superAdmin = User::firstOrCreate(
+            ['email' => 'superadmin@example.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => Hash::make('password'),
+                'active' => true,
+                'is_super_admin' => true,
+            ]
+        );
 
-        // Create regular admin user
-        $user = User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'active' => true,
-            'is_super_admin' => false,
-        ]);
+        // Create regular admin user (idempotent)
+        $user = User::firstOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Admin User',
+                'password' => Hash::make('password'),
+                'active' => true,
+                'is_super_admin' => false,
+            ]
+        );
 
-        // Create regular user (viewer)
-        $viewer = User::create([
-            'name' => 'User Viewer',
-            'email' => 'user@example.com',
-            'password' => Hash::make('password'),
-            'active' => true,
-            'is_super_admin' => false,
-        ]);
+        // Create regular user (viewer) (idempotent)
+        $viewer = User::firstOrCreate(
+            ['email' => 'user@example.com'],
+            [
+                'name' => 'User Viewer',
+                'password' => Hash::make('password'),
+                'active' => true,
+                'is_super_admin' => false,
+            ]
+        );
 
-        // Create test company
-        $company = Company::create([
-            'name' => 'Empresa Demo S.A. de C.V.',
-            'rfc' => 'EDE123456789',
-            'nrc' => '123456-7',
-            'nit' => '0614-123456-001-8',
-            'taxpayer_type' => 'pequeño',
-            'is_withholding_agent' => true,
-            'address' => 'Av. Principal #123',
-            'municipality' => 'San Salvador',
-            'department' => 'San Salvador',
-            'city' => 'San Salvador',
-            'postal_code' => '01101',
-            'country' => 'El Salvador',
-            'phone' => '2222-2222',
-            'business_activity' => 'Servicios de contabilidad',
-            'fiscal_year_start' => 1,
-            'currency' => 'USD',
-            'active' => true,
-        ]);
+        // Create test company (idempotent)
+        $company = Company::firstOrCreate(
+            ['rfc' => 'EDE123456789'],
+            [
+                'name' => 'Empresa Demo S.A. de C.V.',
+                'nrc' => '123456-7',
+                'nit' => '0614-123456-001-8',
+                'taxpayer_type' => 'pequeño',
+                'is_withholding_agent' => true,
+                'address' => 'Av. Principal #123',
+                'municipality' => 'San Salvador',
+                'department' => 'San Salvador',
+                'city' => 'San Salvador',
+                'postal_code' => '01101',
+                'country' => 'El Salvador',
+                'phone' => '2222-2222',
+                'business_activity' => 'Servicios de contabilidad',
+                'fiscal_year_start' => 1,
+                'currency' => 'USD',
+                'active' => true,
+            ]
+        );
 
-        // Associate users with company
+        // Associate users with company (idempotent)
         // Admin has full access
-        \DB::table('company_users')->insert([
-            ['company_id' => $company->id, 'user_id' => $user->id, 'role' => 'admin', 'created_at' => now(), 'updated_at' => now()],
-            ['company_id' => $company->id, 'user_id' => $viewer->id, 'role' => 'viewer', 'created_at' => now(), 'updated_at' => now()],
-        ]);
+        \DB::table('company_users')->updateOrInsert(
+            ['company_id' => $company->id, 'user_id' => $user->id],
+            ['role' => 'admin', 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        \DB::table('company_users')->updateOrInsert(
+            ['company_id' => $company->id, 'user_id' => $viewer->id],
+            ['role' => 'viewer', 'updated_at' => now(), 'created_at' => now()]
+        );
 
         // Note: Super admin doesn't need company association - has access to all
 
@@ -120,7 +133,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($types as $type) {
-            AccountType::create(array_merge(['company_id' => $company->id], $type));
+            AccountType::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $type['code']],
+                array_merge(['company_id' => $company->id], $type)
+            );
         }
     }
 
@@ -134,7 +150,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($segments as $segment) {
-            AccountingSegment::create(array_merge(['company_id' => $company->id], $segment));
+            AccountingSegment::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $segment['code']],
+                array_merge(['company_id' => $company->id], $segment)
+            );
         }
     }
 
@@ -147,79 +166,97 @@ class DatabaseSeeder extends Seeder
         $costos = AccountType::where('company_id', $company->id)->where('code', '5')->first();
         $gastos = AccountType::where('company_id', $company->id)->where('code', '6')->first();
 
-        // ACTIVO
-        $activo1 = Account::create(['company_id' => $company->id, 'code' => '1', 'name' => 'ACTIVO', 'account_type_id' => $activo->id, 'level' => 1, 'is_detail' => false]);
-        $activo11 = Account::create(['company_id' => $company->id, 'code' => '11', 'name' => 'ACTIVO CORRIENTE', 'account_type_id' => $activo->id, 'parent_id' => $activo1->id, 'level' => 2, 'is_detail' => false]);
+        // ACTIVO (idempotent)
+        $activo1 = Account::updateOrCreate(
+            ['company_id' => $company->id, 'code' => '1'],
+            ['name' => 'ACTIVO', 'account_type_id' => $activo->id, 'level' => 1, 'is_detail' => false]
+        );
+        $activo11 = Account::updateOrCreate(
+            ['company_id' => $company->id, 'code' => '11'],
+            ['name' => 'ACTIVO CORRIENTE', 'account_type_id' => $activo->id, 'parent_id' => $activo1->id, 'level' => 2, 'is_detail' => false]
+        );
 
-        Account::create(['company_id' => $company->id, 'code' => '1101', 'name' => 'Caja', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '1102', 'name' => 'Bancos', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '1103', 'name' => 'Cuentas por Cobrar Clientes', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '1104', 'name' => 'IVA Crédito Fiscal', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '1105', 'name' => 'Inventarios', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1101'], ['name' => 'Caja', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1102'], ['name' => 'Bancos', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1103'], ['name' => 'Cuentas por Cobrar Clientes', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1104'], ['name' => 'IVA Crédito Fiscal', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1105'], ['name' => 'Inventarios', 'account_type_id' => $activo->id, 'parent_id' => $activo11->id, 'level' => 3, 'is_detail' => true]);
 
-        $activo12 = Account::create(['company_id' => $company->id, 'code' => '12', 'name' => 'ACTIVO NO CORRIENTE', 'account_type_id' => $activo->id, 'parent_id' => $activo1->id, 'level' => 2, 'is_detail' => false]);
-        Account::create(['company_id' => $company->id, 'code' => '1201', 'name' => 'Propiedad Planta y Equipo', 'account_type_id' => $activo->id, 'parent_id' => $activo12->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '1202', 'name' => 'Depreciación Acumulada', 'account_type_id' => $activo->id, 'parent_id' => $activo12->id, 'level' => 3, 'is_detail' => true]);
+        $activo12 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '12'], ['name' => 'ACTIVO NO CORRIENTE', 'account_type_id' => $activo->id, 'parent_id' => $activo1->id, 'level' => 2, 'is_detail' => false]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1201'], ['name' => 'Propiedad Planta y Equipo', 'account_type_id' => $activo->id, 'parent_id' => $activo12->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '1202'], ['name' => 'Depreciación Acumulada', 'account_type_id' => $activo->id, 'parent_id' => $activo12->id, 'level' => 3, 'is_detail' => true]);
 
         // PASIVO
-        $pasivo2 = Account::create(['company_id' => $company->id, 'code' => '2', 'name' => 'PASIVO', 'account_type_id' => $pasivo->id, 'level' => 1, 'is_detail' => false]);
-        $pasivo21 = Account::create(['company_id' => $company->id, 'code' => '21', 'name' => 'PASIVO CORRIENTE', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo2->id, 'level' => 2, 'is_detail' => false]);
+        $pasivo2 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '2'], ['name' => 'PASIVO', 'account_type_id' => $pasivo->id, 'level' => 1, 'is_detail' => false]);
+        $pasivo21 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '21'], ['name' => 'PASIVO CORRIENTE', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo2->id, 'level' => 2, 'is_detail' => false]);
 
-        Account::create(['company_id' => $company->id, 'code' => '2101', 'name' => 'Cuentas por Pagar Proveedores', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '2102', 'name' => 'IVA Débito Fiscal', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '2103', 'name' => 'Retenciones por Pagar', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '2101'], ['name' => 'Cuentas por Pagar Proveedores', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '2102'], ['name' => 'IVA Débito Fiscal', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '2103'], ['name' => 'Retenciones por Pagar', 'account_type_id' => $pasivo->id, 'parent_id' => $pasivo21->id, 'level' => 3, 'is_detail' => true]);
 
         // CAPITAL
-        $capital3 = Account::create(['company_id' => $company->id, 'code' => '3', 'name' => 'CAPITAL', 'account_type_id' => $capital->id, 'level' => 1, 'is_detail' => false]);
-        Account::create(['company_id' => $company->id, 'code' => '3101', 'name' => 'Capital Social', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '3102', 'name' => 'Utilidades Retenidas', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '3103', 'name' => 'Utilidad del Ejercicio', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
+        $capital3 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '3'], ['name' => 'CAPITAL', 'account_type_id' => $capital->id, 'level' => 1, 'is_detail' => false]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '3101'], ['name' => 'Capital Social', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '3102'], ['name' => 'Utilidades Retenidas', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '3103'], ['name' => 'Utilidad del Ejercicio', 'account_type_id' => $capital->id, 'parent_id' => $capital3->id, 'level' => 2, 'is_detail' => true]);
 
         // INGRESOS
-        $ingresos4 = Account::create(['company_id' => $company->id, 'code' => '4', 'name' => 'INGRESOS', 'account_type_id' => $ingresos->id, 'level' => 1, 'is_detail' => false]);
-        Account::create(['company_id' => $company->id, 'code' => '4101', 'name' => 'Ventas', 'account_type_id' => $ingresos->id, 'parent_id' => $ingresos4->id, 'level' => 2, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '4102', 'name' => 'Ingresos por Servicios', 'account_type_id' => $ingresos->id, 'parent_id' => $ingresos4->id, 'level' => 2, 'is_detail' => true]);
+        $ingresos4 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '4'], ['name' => 'INGRESOS', 'account_type_id' => $ingresos->id, 'level' => 1, 'is_detail' => false]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '4101'], ['name' => 'Ventas', 'account_type_id' => $ingresos->id, 'parent_id' => $ingresos4->id, 'level' => 2, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '4102'], ['name' => 'Ingresos por Servicios', 'account_type_id' => $ingresos->id, 'parent_id' => $ingresos4->id, 'level' => 2, 'is_detail' => true]);
 
         // COSTOS
-        $costos5 = Account::create(['company_id' => $company->id, 'code' => '5', 'name' => 'COSTOS', 'account_type_id' => $costos->id, 'level' => 1, 'is_detail' => false]);
-        Account::create(['company_id' => $company->id, 'code' => '5101', 'name' => 'Costo de Ventas', 'account_type_id' => $costos->id, 'parent_id' => $costos5->id, 'level' => 2, 'is_detail' => true]);
+        $costos5 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '5'], ['name' => 'COSTOS', 'account_type_id' => $costos->id, 'level' => 1, 'is_detail' => false]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '5101'], ['name' => 'Costo de Ventas', 'account_type_id' => $costos->id, 'parent_id' => $costos5->id, 'level' => 2, 'is_detail' => true]);
 
         // GASTOS
-        $gastos6 = Account::create(['company_id' => $company->id, 'code' => '6', 'name' => 'GASTOS', 'account_type_id' => $gastos->id, 'level' => 1, 'is_detail' => false]);
-        Account::create(['company_id' => $company->id, 'code' => '6101', 'name' => 'Gastos de Administración', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '6102', 'name' => 'Gastos de Venta', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
-        Account::create(['company_id' => $company->id, 'code' => '6103', 'name' => 'Gastos Financieros', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
+        $gastos6 = Account::updateOrCreate(['company_id' => $company->id, 'code' => '6'], ['name' => 'GASTOS', 'account_type_id' => $gastos->id, 'level' => 1, 'is_detail' => false]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '6101'], ['name' => 'Gastos de Administración', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '6102'], ['name' => 'Gastos de Venta', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
+        Account::updateOrCreate(['company_id' => $company->id, 'code' => '6103'], ['name' => 'Gastos Financieros', 'account_type_id' => $gastos->id, 'parent_id' => $gastos6->id, 'level' => 2, 'is_detail' => true]);
     }
 
     private function seedAccountingPeriods(Company $company, User $user): void
     {
         $year = now()->year;
         
-        // Create annual period
-        AccountingPeriod::create([
-            'company_id' => $company->id,
-            'period_type' => 'annual',
-            'fiscal_year' => $year,
-            'period_number' => 0,
-            'start_date' => "{$year}-01-01",
-            'end_date' => "{$year}-12-31",
-            'status' => 'open',
-        ]);
+        // Create annual period (idempotent)
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'fiscal_year' => $year, 'period_number' => 0],
+            [
+                'period_type' => 'annual',
+                'start_date' => "{$year}-01-01",
+                'end_date' => "{$year}-12-31",
+                'status' => 'open',
+                'month' => null,
+                'year' => $year,
+                'period_name' => 'Anual ' . $year,
+            ]
+        );
 
-        // Create monthly periods for current year
+        // Create monthly periods for current year (idempotent) and include month/period_name for UI
+        $monthNames = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre'
+        ];
+
         for ($month = 1; $month <= 12; $month++) {
             $startDate = date('Y-m-01', strtotime("{$year}-{$month}-01"));
             $endDate = date('Y-m-t', strtotime("{$year}-{$month}-01"));
-            
-            AccountingPeriod::create([
-                'company_id' => $company->id,
-                'period_type' => 'monthly',
-                'fiscal_year' => $year,
-                'period_number' => $month,
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'status' => 'open',
-            ]);
+
+            AccountingPeriod::updateOrCreate(
+                ['company_id' => $company->id, 'fiscal_year' => $year, 'period_number' => $month],
+                [
+                    'period_type' => 'monthly',
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'status' => 'open',
+                    'month' => $month,
+                    'year' => $year,
+                    'period_name' => $monthNames[$month] . ' ' . $year,
+                ]
+            );
         }
     }
 
@@ -233,7 +270,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($methods as $method) {
-            PaymentMethod::create(array_merge(['company_id' => $company->id], $method));
+            PaymentMethod::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $method['code']],
+                array_merge(['company_id' => $company->id], $method)
+            );
         }
     }
 
@@ -248,7 +288,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($types as $type) {
-            DocumentType::create(array_merge(['company_id' => $company->id], $type));
+            DocumentType::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $type['code']],
+                array_merge(['company_id' => $company->id], $type)
+            );
         }
     }
 
@@ -261,7 +304,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($customers as $customer) {
-            Customer::create(array_merge(['company_id' => $company->id], $customer));
+            Customer::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $customer['code']],
+                array_merge(['company_id' => $company->id], $customer)
+            );
         }
     }
 
@@ -274,7 +320,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($suppliers as $supplier) {
-            Supplier::create(array_merge(['company_id' => $company->id], $supplier));
+            Supplier::updateOrCreate(
+                ['company_id' => $company->id, 'code' => $supplier['code']],
+                array_merge(['company_id' => $company->id], $supplier)
+            );
         }
     }
 
@@ -290,11 +339,14 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            InventoryItem::create(array_merge([
-                'company_id' => $company->id,
-                'inventory_account_id' => $inventoryAccount?->id,
-                'cogs_account_id' => $cogsAccount?->id,
-            ], $item));
+            InventoryItem::updateOrCreate(
+                ['company_id' => $company->id, 'item_code' => $item['item_code']],
+                array_merge([
+                    'company_id' => $company->id,
+                    'inventory_account_id' => $inventoryAccount?->id,
+                    'cogs_account_id' => $cogsAccount?->id,
+                ], $item)
+            );
         }
     }
 
@@ -308,10 +360,13 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($accounts as $account) {
-            BankAccount::create(array_merge([
-                'company_id' => $company->id,
-                'account_id' => $bankAccount?->id,
-            ], $account));
+            BankAccount::updateOrCreate(
+                ['company_id' => $company->id, 'account_number' => $account['account_number']],
+                array_merge([
+                    'company_id' => $company->id,
+                    'account_id' => $bankAccount?->id,
+                ], $account)
+            );
         }
     }
 }

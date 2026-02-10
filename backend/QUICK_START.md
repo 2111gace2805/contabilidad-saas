@@ -96,7 +96,22 @@ grep "company.context" bootstrap/app.php
 # 4. Verificar que las rutas no tienen V1
 grep -c "Api\\\\V1" routes/api.php  # Debe retornar 0
 ```
+### Ejecutar pruebas (PHPUnit)
 
+Para ejecutar las pruebas backend desde el host usando Docker:
+
+```bash
+# Ejecutar todas las pruebas
+docker-compose exec backend vendor/bin/phpunit
+
+# Ejecutar solo Feature tests
+docker-compose exec backend vendor/bin/phpunit --testsuite Feature
+
+# Ejecutar una prueba concreta (archivo)
+docker-compose exec backend vendor/bin/phpunit tests/backend/Feature/AccountingSegmentTest.php --testdox
+```
+
+> Nota: Los tests se centralizaron en `/tests/backend` (antes en `backend/tests`) y `backend/phpunit.xml` fue actualizado para apuntar a las nuevas rutas.
 ---
 
 ## 📋 Estructura de Rutas

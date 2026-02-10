@@ -64,4 +64,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(JournalEntry::class, 'created_by');
     }
+
+    public function todos()
+    {
+        return $this->hasMany(Todo::class);
+    }
 }

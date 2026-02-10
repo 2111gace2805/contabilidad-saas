@@ -38,8 +38,9 @@ class AccountingSegmentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'code' => 'required|string|max:10',
+            'code' => 'required|string|max:10|unique:accounting_segments,code,NULL,id,company_id,' . $companyId,
             'name' => 'required|string|max:100',
+            'digit_length' => 'required|integer|min:1|max:10', // Use digit_length to match model
             'active' => 'boolean',
         ]);
 
@@ -49,6 +50,9 @@ class AccountingSegmentController extends Controller
 
         $data = $validator->validated();
         $data['company_id'] = $companyId;
+
+        // Ensure digit_length is an integer
+        $data['digit_length'] = intval($data['digit_length']);
 
         $segment = AccountingSegment::create($data);
         
@@ -72,8 +76,9 @@ class AccountingSegmentController extends Controller
         $segment = AccountingSegment::where('company_id', $companyId)->findOrFail($id);
         
         $validator = Validator::make($request->all(), [
-            'code' => 'sometimes|required|string|max:10',
+            'code' => 'sometimes|required|string|max:10|unique:accounting_segments,code,' . $id . ',id,company_id,' . $companyId,
             'name' => 'sometimes|required|string|max:100',
+            'digit_length' => 'sometimes|required|integer|min:1|max:10',
             'active' => 'boolean',
         ]);
 
@@ -81,7 +86,12 @@ class AccountingSegmentController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $segment->update($validator->validated());
+        $data = $validator->validated();
+        if (isset($data['digit_length'])) {
+            $data['digit_length'] = intval($data['digit_length']);
+        }
+
+        $segment->update($data);
         
         return response()->json($segment);
     }

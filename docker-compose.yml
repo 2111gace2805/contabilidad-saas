@@ -24,6 +24,7 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
+      - ./tests/backend:/var/www/tests/backend
     ports:
       - "8000:8000"
     depends_on:

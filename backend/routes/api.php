@@ -92,6 +92,8 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     // Cuentas contables
     Route::get('accounts/hierarchy', [AccountController::class, 'hierarchy']);
     Route::apiResource('accounts', AccountController::class);
+    // Importar catálogo (CSV) - crea/actualiza tipos de cuenta y cuentas según el payload
+    Route::post('accounts/import', [AccountController::class, 'import']);
     
     // Períodos contables
     Route::apiResource('accounting-periods', AccountingPeriodController::class);
@@ -167,3 +169,6 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     // Todos (task management)
     Route::apiResource('todos', TodoController::class);
 });
+
+// Route to download plantilla.csv
+Route::get('accounts/template', [AccountController::class, 'downloadTemplate']);
