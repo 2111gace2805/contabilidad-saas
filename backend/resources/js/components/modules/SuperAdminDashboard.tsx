@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiClient } from '../../lib/api';
 import { Building2, Users, Plus, Trash2, UserPlus, Shield, Edit, Lock } from 'lucide-react';
+import UserAutocomplete from '../common/UserAutocomplete';
 
 interface Company {
   id: number;
@@ -18,6 +19,7 @@ interface Company {
     email: string;
     pivot: { role: string };
   }>;
+  max_users: number;
 }
 
 interface User {
@@ -34,8 +36,8 @@ export function SuperAdminDashboard() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'companies' | 'users'>('companies');
-  
+  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'roles'>('companies');
+
   // Company Form
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [companyForm, setCompanyForm] = useState({
@@ -46,6 +48,7 @@ export function SuperAdminDashboard() {
     currency: 'USD',
     fiscal_year_start: 1,
     admin_user_id: '',
+    max_users: 3,
   });
 
   // User Form
@@ -120,7 +123,7 @@ export function SuperAdminDashboard() {
 
   const handleDeleteCompany = async (company: Company) => {
     const hasData = (company.customers_count || 0) + (company.suppliers_count || 0) + (company.journal_entries_count || 0);
-    
+
     if (hasData > 0) {
       alert('No se puede eliminar esta empresa porque tiene transacciones registradas.');
       return;
@@ -258,25 +261,33 @@ export function SuperAdminDashboard() {
           <nav className="flex gap-1 p-2">
             <button
               onClick={() => setActiveTab('companies')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'companies'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'companies'
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
             >
               <Building2 className="w-4 h-4 inline-block mr-2" />
               Empresas
             </button>
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'users'
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'users'
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
             >
               <Users className="w-4 h-4 inline-block mr-2" />
               Usuarios
+            </button>
+            <button
+              onClick={() => setActiveTab('roles')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'roles'
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-600 hover:bg-slate-50'
+                }`}
+            >
+              <Shield className="w-4 h-4 inline-block mr-2" />
+              Roles
             </button>
           </nav>
         </div>
@@ -318,10 +329,11 @@ export function SuperAdminDashboard() {
                   </div>
 
                   <h3 className="text-lg font-bold text-slate-800 mb-2">{company.name}</h3>
-                  
+
                   <div className="space-y-1 text-sm text-slate-600 mb-4">
                     <p><span className="font-medium">RFC:</span> {company.rfc}</p>
                     <p><span className="font-medium">Moneda:</span> {company.currency}</p>
+                    <p><span className="font-medium">Límite Usuarios:</span> {company.max_users}</p>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-3">
@@ -357,6 +369,54 @@ export function SuperAdminDashboard() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Roles Tab */}
+      {activeTab === 'roles' && (
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <Shield className="w-6 h-6 text-blue-600" />
+            Descripción de Roles en el Sistema
+          </h3>
+
+          <div className="grid grid-cols-1 gap-6">
+            <div className="p-6 border border-purple-100 bg-purple-50/30 rounded-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Super Admin</span>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                Nivel de gestión global del SaaS. Puede crear empresas, suspender servicios, gestionar todos los usuarios del sistema y asignar administradores. No tiene acceso a la operatividad diaria de la empresa para garantizar la privacidad de datos.
+              </p>
+            </div>
+
+            <div className="p-6 border border-emerald-100 bg-emerald-50/30 rounded-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Admin</span>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                Dueño o Contador Jefe de la empresa. Tiene control total sobre el catálogo de cuentas, períodos contables y configuraciones del sistema. Es el único autorizado para validar y aprobar la anulación de pólizas contabilizadas.
+              </p>
+            </div>
+
+            <div className="p-6 border border-blue-100 bg-blue-50/30 rounded-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Contador</span>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                Personal operativo con acceso a todos los módulos: Pólizas, Clientes, Proveedores, Bancos e Inventarios. Puede registrar movimientos y generar reportes, pero no tiene permisos para modificar la estructura contable ni los settings de la empresa.
+              </p>
+            </div>
+
+            <div className="p-6 border border-slate-100 bg-slate-50/30 rounded-2xl">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="bg-slate-100 text-slate-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Visor</span>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                Acceso de solo lectura a los módulos operativos y reportes. Ideal para auditores externos o gerencia que necesite consultar información sin riesgo de alteración de datos.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -518,16 +578,34 @@ export function SuperAdminDashboard() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Asignar Administrador</label>
-                <select
+                <UserAutocomplete
+                  label="Asignar Administrador"
                   value={companyForm.admin_user_id}
-                  onChange={(e) => setCompanyForm({ ...companyForm, admin_user_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                >
-                  <option value="">Sin asignar</option>
-                  {users.filter(u => !u.is_super_admin).map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                  onChange={(val) => setCompanyForm({ ...companyForm, admin_user_id: val as string })}
+                  placeholder="Buscar usuario..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Máximo de Usuarios *</label>
+                <div className="flex gap-3">
+                  {[1, 2, 3, 5, 10].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setCompanyForm({ ...companyForm, max_users: val })}
+                      className={`flex-1 py-2 text-sm font-bold rounded-xl border transition-all ${companyForm.max_users === val
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                        }`}
+                    >
+                      {val}
+                    </button>
                   ))}
-                </select>
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 ml-1">
+                  Total de cuentas de usuario permitidas para esta empresa.
+                </p>
               </div>
             </div>
 
@@ -703,17 +781,12 @@ export function SuperAdminDashboard() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Usuario *</label>
-                <select
+                <UserAutocomplete
+                  label="Usuario *"
                   value={assignForm.user_id}
-                  onChange={(e) => setAssignForm({ ...assignForm, user_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                >
-                  <option value="">Seleccionar...</option>
-                  {users.filter(u => !u.is_super_admin).map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                  ))}
-                </select>
+                  onChange={(val) => setAssignForm({ ...assignForm, user_id: val as string })}
+                  placeholder="Buscar usuario..."
+                />
               </div>
 
               <div>

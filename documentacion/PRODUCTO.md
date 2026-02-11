@@ -150,6 +150,17 @@ docker-compose logs -f
 - UI Períodos: Agrupado por **año** con secciones expandibles/colapsables; el estado de expansión **se persiste** en sessionStorage para mejorar la navegación cuando la lista crece.
 - Períodos: Añadidos **modales** para crear y editar períodos (soporte para casos especiales y edición de fechas) y acciones para generar un año completo (12 períodos).
 - Seguridad en borrado: Ahora el backend **impide eliminar** un período si existen asientos (journal entries) dentro del rango de fechas; el frontend hace una verificación previa y muestra un mensaje claro.
+- **Partidas de Diario (Journal Entries):**
+  - Implementado el módulo de partidas de diario, que permite registrar transacciones contables con múltiples líneas.
+  - Validaciones clave:
+    - La suma de los débitos debe ser igual a la suma de los créditos.
+    - Solo se permiten movimientos en cuentas imputables.
+    - No se pueden modificar partidas contabilizadas o anuladas.
+    - Las fechas deben estar dentro de períodos abiertos.
+  - Endpoints creados:
+    - Crear partida de diario (`POST /api/journal-entries`).
+    - Contabilizar partida (`POST /api/journal-entries/{id}/post`).
+  - Extensibilidad futura: Preparado para integración con módulos de ventas, compras, bancos e inventarios.
 - Bugfix: `generate-year` arreglado — se corrige `period_type` a `'monthly'` al crear períodos y la operación ahora está protegida con transacción y manejo de errores.
 - Seeder: Los seeders de períodos se hicieron idempotentes y ahora incluyen los campos **`month`**, **`year`** y **`period_name`** (ej. "Febrero 2026") para mejorar la visualización en la UI.
 - Seeder: Los seeders de cuentas (catálogo base) se hicieron idempotentes (se reemplazó `create()` por `updateOrCreate()`) y se ejecutó `php artisan db:seed` con éxito sin errores de duplicado.
@@ -170,3 +181,49 @@ docker-compose logs -f
 ---
 
 **¡El sistema está listo para usar!** 🎉
+
+## **Pantalla Nueva Póliza**
+
+- **Objetivo:** Vista para crear una nueva póliza contable que coincida visual y funcionalmente con la maqueta de la aplicación (ver imagen de referencia del modal "Nueva Póliza Contable").
+- **Diseño:** Modal centrado con `max-width` ampliado para mostrar claramente los campos y la tabla de movimientos en una sola vista.
+
+- **Encabezado de nota:** Caja informativa azul con el texto: "Nota: La póliza se guardará como borrador y puede estar desbalanceada. Para contabilizarla, deberá estar balanceada (débitos = créditos)."
+
+- **Campos principales (arriba):**
+  - **Fecha:** selector de fecha (formato visible en UI dd/mm/yyyy).
+  - **Tipo de Partida:** menú desplegable con opciones (ver lista abajo). En la maqueta la opción por defecto visible es "PA - Partida de Ajuste".
+  - **Descripción:** campo de texto grande para el concepto de la póliza.
+
+- **Movimientos (tabla):**
+  - Columnas: **Cuenta**, **Descripción**, **Debe**, **Haber**.
+  - Cada fila tiene en la columna "Cuenta" un campo de texto con placeholder "Buscar cuenta..." y autocompletado dinámico.
+  - Botón "+ Agregar línea" en la esquina superior derecha de la tabla para insertar nuevas filas.
+  - Fila de totales fija al final mostrando sumas de Debe y Haber.
+
+- **Autocompletado de cuentas:**
+  - Busca por código o nombre a medida que el usuario escribe (debounce ~250ms).
+  - Permite navegación por teclado (ArrowUp/ArrowDown) y selección con `Enter` o clic.
+  - Sólo muestra y permite seleccionar cuentas con `is_postable === true` ("cuentas imputables").
+  - Si no hay resultados postables muestra el mensaje: "No se encontraron cuentas postables".
+  - Al seleccionar una sugerencia se guarda internamente el `account_id` asociado.
+
+- **Validaciones en UI:**
+  - No se permite guardar la póliza si existe alguna línea sin `account_id` (la fila sin cuenta mostrará un error junto al campo de cuenta).
+  - Debe igualar suma de Debe y Haber antes de permitir la acción "Contabilizar"; guardar como borrador no exige balance.
+  - Las acciones que cambian estado (Contabilizar / Anular) verifican que el periodo esté abierto.
+
+- **Botones de acción (pie del modal):**
+  - `Cancelar` (cierra el modal sin guardar).
+  - `Guardar como Borrador` (botón principal tipo oscuro, guarda sin contabilizar).
+
+### **Tipos de Partida disponibles**
+Los tipos de partida configurados en la UI deben incluir al menos las siguientes opciones:
+
+- **PD - Partida de Diario**
+- **PA - Partida de Ajuste**
+- **PB - Partida de Banco**
+- **PC - Partida de Caja**
+
+Cada opción mostrará un código corto (PD/PA/PB/PC) seguido del nombre descriptivo como en la maqueta.
+
+> Nota: El backend ya soporta validación de `lines.*.account_id` y el cliente replica esas comprobaciones para evitar errores 422. El autocompletado consume el endpoint `/api/accounts?search=...` y filtra los resultados para sólo presentar cuentas postables.

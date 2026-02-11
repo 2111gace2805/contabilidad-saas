@@ -43,6 +43,7 @@ class SuperAdminController extends Controller
             'currency' => 'nullable|string|max:3',
             'fiscal_year_start' => 'integer|min:1|max:12',
             'admin_user_id' => 'nullable|exists:users,id',
+            'max_users' => 'integer|min:1|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -104,7 +105,19 @@ class SuperAdminController extends Controller
             ->exists();
 
         if ($exists) {
-            return response()->json(['message' => 'User already assigned'], 422);
+            return response()->json(['message' => 'Usuario ya está asignado'], 422);
+        }
+
+        // Check max users limit
+        $company = Company::findOrFail($request->company_id);
+        $currentUsersCount = DB::table('company_users')
+            ->where('company_id', $request->company_id)
+            ->count();
+
+        if ($currentUsersCount >= $company->max_users) {
+            return response()->json([
+                'message' => "La empresa ha alcanzado su límite máximo de {$company->max_users} usuarios."
+            ], 422);
         }
 
         DB::table('company_users')->insert([

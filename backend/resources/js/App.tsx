@@ -24,17 +24,25 @@ import { Treasury } from './components/modules/Treasury';
 import { ModuleManagement } from './components/modules/ModuleManagement';
 import { Purchases } from './components/modules/Purchases';
 import { Sales } from './components/modules/Sales';
+import JournalEntryTypes from './components/modules/JournalEntryTypes';
+import CompanyUsers from './components/modules/CompanyUsers';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
   const { loading: companyLoading } = useCompany();
   const [activeModule, setActiveModule] = useState<string>('');
 
-  // Set initial module based on user role
+  // Set initial module based on user role and reset on logout
   useEffect(() => {
-    if (user && !activeModule) {
-      const initialModule = user.is_super_admin ? 'super-admin' : 'dashboard';
-      setActiveModule(initialModule);
+    if (user) {
+      // If no module is active, OR if user is on super-admin but isn't one, redirect
+      if (!activeModule || (activeModule === 'super-admin' && !user.is_super_admin)) {
+        const initialModule = user.is_super_admin ? 'super-admin' : 'dashboard';
+        setActiveModule(initialModule);
+      }
+    } else {
+      // Reset module when user logs out
+      setActiveModule('');
     }
   }, [user]);
 
@@ -101,6 +109,10 @@ function AppContent() {
         return <Treasury />;
       case 'account-types':
         return <AccountTypesManagement />;
+      case 'company-users':
+        return <CompanyUsers />;
+      case 'journal-types':
+        return <JournalEntryTypes />;
       case 'modules':
         return <ModuleManagement />;
       case 'settings':

@@ -197,6 +197,11 @@ export const accounts = {
   async import(data: any[]) {
     return ApiClient.post('/accounts/import', data);
   },
+
+  async search(term: string) {
+    // Server-side search endpoint: /accounts?search=term
+    return ApiClient.get<Types.Account[]>(`/accounts?search=${encodeURIComponent(term)}`);
+  },
 };
 
 // Account Types API
@@ -278,8 +283,13 @@ export const periods = {
 
 // Journal Entries API
 export const journalEntries = {
-  async getAll() {
-    return ApiClient.get<Types.JournalEntry[]>('/journal-entries');
+  async getAll(params?: string | Record<string, any>) {
+    let endpoint = '/journal-entries';
+    if (params) {
+      const queryString = typeof params === 'string' ? params : new URLSearchParams(params).toString();
+      endpoint += `?${queryString}`;
+    }
+    return ApiClient.get<Types.JournalEntry[] | { data: Types.JournalEntry[] }>(endpoint);
   },
 
   async getById(id: number) {
@@ -302,8 +312,35 @@ export const journalEntries = {
     return ApiClient.post<Types.JournalEntry>(`/journal-entries/${id}/post`);
   },
 
-  async void(id: number) {
-    return ApiClient.post<Types.JournalEntry>(`/journal-entries/${id}/void`);
+  async requestVoid(id: number, reason: string) {
+    return ApiClient.post<Types.JournalEntry>(`/journal-entries/${id}/request-void`, { reason });
+  },
+
+  async authorizeVoid(id: number) {
+    return ApiClient.post<Types.JournalEntry>(`/journal-entries/${id}/authorize-void`);
+  },
+
+  async getPendingVoids() {
+    return ApiClient.get<Types.JournalEntry[]>('/journal-entries/pending-voids');
+  },
+};
+
+// Journal Entry Types API
+export const journalEntryTypes = {
+  async getAll() {
+    return ApiClient.get<Types.JournalEntryType[]>('/journal-entry-types');
+  },
+
+  async create(data: Partial<Types.JournalEntryType>) {
+    return ApiClient.post<Types.JournalEntryType>('/journal-entry-types', data);
+  },
+
+  async update(id: number, data: Partial<Types.JournalEntryType>) {
+    return ApiClient.put<Types.JournalEntryType>(`/journal-entry-types/${id}`, data);
+  },
+
+  async delete(id: number) {
+    return ApiClient.delete(`/journal-entry-types/${id}`);
   },
 };
 

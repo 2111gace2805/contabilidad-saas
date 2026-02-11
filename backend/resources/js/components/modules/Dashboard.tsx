@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { dashboard } from '../../lib/api';
-import { TrendingUp, TrendingDown, DollarSign, FileText, Users, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, FileText, Users, Package, XCircle } from 'lucide-react';
 import type { DashboardStats } from '../../types';
 
 export function Dashboard() {
   const { selectedCompany } = useCompany();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     total_assets: 0,
     total_liabilities: 0,
@@ -69,31 +71,54 @@ export function Dashboard() {
     const formatted = formatCurrency(value);
 
     return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-slate-600 font-medium mb-1">{title}</p>
-          <p className="text-2xl font-bold text-slate-800">${formatted}</p>
-          {trend && (
-            <div className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {trend > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span>{Math.abs(trend)}%</span>
-            </div>
-          )}
-        </div>
-        <div className={`${color} p-3 rounded-lg`}>
-          <Icon className="w-6 h-6 text-white" />
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-slate-600 font-medium mb-1">{title}</p>
+            <p className="text-2xl font-bold text-slate-800">${formatted}</p>
+            {trend && (
+              <div className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {trend > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                <span>{Math.abs(trend)}%</span>
+              </div>
+            )}
+          </div>
+          <div className={`${color} p-3 rounded-lg`}>
+            <Icon className="w-6 h-6 text-white" />
+          </div>
         </div>
       </div>
-    </div>
     );
   };
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">Panel de Control</h2>
-        <p className="text-slate-600">{selectedCompany.name}</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-800 mb-2">Panel de Control</h2>
+          <p className="text-slate-600 font-medium">{selectedCompany.name}</p>
+        </div>
+
+        {/* Audit Alert for Admins */}
+        {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && stats.pending_voids_count && stats.pending_voids_count > 0 ? (
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center gap-4 animate-pulse shadow-lg shadow-amber-200/50">
+            <div className="bg-amber-500 p-2 rounded-xl text-white">
+              <XCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-amber-900 font-black text-xs uppercase tracking-widest">Alerta de Auditoría</p>
+              <p className="text-amber-700 text-sm font-bold">
+                Tienes <span className="underline">{stats.pending_voids_count}</span> {stats.pending_voids_count === 1 ? 'solicitud' : 'solicitudes'} de anulación por revisar.
+              </p>
+            </div>
+            <a
+              href="/journal-entries"
+              className="ml-4 px-4 py-2 bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-700 transition-colors"
+            >
+              Revisar Ahora
+            </a>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

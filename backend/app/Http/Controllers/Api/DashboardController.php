@@ -71,6 +71,10 @@ class DashboardController extends Controller
                 ->orderBy('bill_date', 'desc')
                 ->limit(5)
                 ->get(),
+                
+            'pending_voids_count' => JournalEntry::where('company_id', $companyId)
+                ->where('status', JournalEntry::STATUS_PENDING_VOID)
+                ->count(),
         ];
         
         return response()->json($stats);

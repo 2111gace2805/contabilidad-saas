@@ -13,7 +13,7 @@ class Company extends Model
         'name', 'rfc', 'nrc', 'nit', 'taxpayer_type', 'is_withholding_agent',
         'address', 'address_line2', 'municipality', 'department', 'city',
         'postal_code', 'country', 'employer_registration', 'phone',
-        'business_activity', 'fiscal_year_start', 'currency', 'active',
+        'business_activity', 'fiscal_year_start', 'currency', 'max_users', 'active',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class Company extends Model
         return [
             'is_withholding_agent' => 'boolean',
             'active' => 'boolean',
+            'max_users' => 'integer',
         ];
     }
 

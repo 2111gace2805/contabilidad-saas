@@ -13,10 +13,29 @@ Ahora las pólizas siguen un flujo de trabajo de 3 estados:
 
 ### 1. Borrador (draft)
 - **Estado inicial** al crear una póliza
-- Se puede editar (próximamente)
+- Se puede editar
 - Se puede eliminar
 - **NO afecta** los saldos contables
 - **NO aparece** en reportes oficiales
+- Cada partida incluye un **correlativo** generado automáticamente, pero el usuario puede editarlo si lo desea.
+- **Soporte para múltiples líneas:**
+  - Cada partida puede incluir múltiples detalles de cuentas (líneas).
+  - Cada línea debe especificar:
+    - **Cuenta contable** (obligatoria)
+    - **Descripción** (opcional)
+    - **Débito** o **Crédito** (obligatorio, al menos uno debe ser mayor a 0).
+  - El sistema valida automáticamente que la suma de débitos sea igual a la suma de créditos antes de permitir contabilizar la póliza.
+
+- **Autocompletado de cuentas (UX):**
+  - En la pantalla **Nueva Póliza** el campo de cuenta ahora es un **campo de texto con autocompletado**.
+  - El usuario puede escribir código o nombre de cuenta y el sistema mostrará sugerencias dinámicas (soporta navegación por teclado y selección con Enter).
+  - Al seleccionar una sugerencia se rellena la cuenta y se guarda su `account_id`.
+  - El modal de creación se ha ampliado para mejorar la visualización (`max-width` aumentado) y mostrar claramente código y nombre de cuenta.
+
+- **Validación de líneas:**
+  - No se permite guardar una póliza que contenga líneas sin **cuenta seleccionada**.
+  - En el modal, las líneas sin cuenta se marcarán con un mensaje de error y se impedirá el guardado hasta que se seleccione una cuenta para cada línea.
+  - El servidor también valida `lines.*.account_id` (campo obligatorio), por lo que si el cliente omitiera la validación el backend devolvería 422 con los errores correspondientes.
 
 ### 2. Contabilizada (posted)
 - Estado después de aprobar un borrador
@@ -68,10 +87,11 @@ Ahora las pólizas siguen un flujo de trabajo de 3 estados:
 | Acción | Disponible | Icono | Color |
 |--------|-----------|-------|-------|
 | Ver detalles | ✅ | - | - |
-| Editar | 🔜 Próximamente | ✏️ | Azul |
+| Editar | ✅ | ✏️ | Azul |
 | Contabilizar | ✅ | ✓ | Verde |
 | Eliminar | ✅ | 🗑️ | Rojo |
 | Anular | ❌ | - | - |
+| Agregar detalles de cuentas | ✅ | ➕ | Verde |
 
 ### Contabilizada
 | Acción | Disponible | Icono | Color |

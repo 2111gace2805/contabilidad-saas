@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useCompany } from '../../contexts/CompanyContext';
-import { accounts } from '../../lib/api';
+import { accounts as accountsApi } from '../../lib/api';
 
 interface Account {
-  id: string;
+  id: number;
   code: string;
   name: string;
+  allows_transactions: boolean;
 }
 
 interface AccountAutocompleteProps {
@@ -25,6 +26,8 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const selectedAccount = accounts.find((acc: Account) => String(acc.id) === String(value));
+
   useEffect(() => {
     if (selectedCompany) {
       loadAccounts();
@@ -35,9 +38,17 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
     if (!selectedCompany) return;
 
     try {
-      const data = await accounts.getAll();
-      // API client sets company via ApiClient.setCompanyId in CompanyContext
-      setAccounts(Array.isArray(data) ? data : (data.data || []));
+      const data = await accountsApi.getAll();
+      const list = Array.isArray(data) ? data : ((data as any)?.data || []);
+      // Filter postable/detail accounts. Support different naming conventions.
+      const filteredList = list.filter((acc: any) =>
+        acc.allows_transactions === true ||
+        acc.is_detail === true ||
+        acc.is_detail === 1 ||
+        acc.is_postable === true ||
+        acc.is_postable === 1
+      );
+      setAccounts(filteredList);
     } catch (error) {
       console.error('Error loading accounts:', error);
       setAccounts([]);
@@ -45,7 +56,7 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
   };
 
 
-  const filteredAccounts = accounts.filter(acc => {
+  const filteredAccounts = accounts.filter((acc: Account) => {
     const term = searchTerm.toLowerCase();
     return (
       acc.code.toLowerCase().includes(term) ||
@@ -91,7 +102,11 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
 
   const handleInputFocus = () => {
     setShowDropdown(true);
-    setSearchTerm('');
+    // If we have an account selected, show its text so the user knows what's there
+    // but allow them to clear it to search.
+    if (selectedAccount && searchTerm === '') {
+      setSearchTerm(`${selectedAccount.code} - ${selectedAccount.name}`);
+    }
   };
 
   const handleSelectAccount = (account: Account) => {
@@ -112,11 +127,11 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => (prev < filteredAccounts.length - 1 ? prev + 1 : prev));
+        setSelectedIndex((prev: number) => (prev < filteredAccounts.length - 1 ? prev + 1 : prev));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedIndex(prev => (prev > 0 ? prev - 1 : 0));
+        setSelectedIndex((prev: number) => (prev > 0 ? prev - 1 : 0));
         break;
       case 'Enter':
         e.preventDefault();
@@ -167,13 +182,17 @@ export function AccountAutocomplete({ value, onChange, className = '', placehold
               <button
                 key={account.id}
                 type="button"
-                onClick={() => handleSelectAccount(account)}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                  index === selectedIndex ? 'bg-slate-100' : ''
-                } ${value === account.code ? 'bg-blue-50 text-blue-700' : 'text-slate-800'}`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent blur before click
+                  handleSelectAccount(account);
+                }}
+                className={`w-full px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-50 last:border-0 ${index === selectedIndex ? 'bg-blue-50 text-blue-800' : 'hover:bg-slate-50 text-slate-700'
+                  } ${value === account.id ? 'bg-blue-100 font-semibold' : ''}`}
               >
-                <div className="font-mono text-xs text-slate-600">{account.code}</div>
-                <div className="font-medium">{account.name}</div>
+                <div className="text-[10px] font-mono text-slate-400 mb-0.5 uppercase tracking-tighter">
+                  {account.code}
+                </div>
+                <div className="font-medium truncate">{account.name}</div>
               </button>
             ))
           )}

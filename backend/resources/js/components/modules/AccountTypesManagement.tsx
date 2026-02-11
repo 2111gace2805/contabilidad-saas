@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ApiClient } from '../../lib/api';
 import { Plus, Edit2, Trash2, Tag } from 'lucide-react';
+import { Card } from '../common/Card';
+import { DataTable } from '../common/DataTable';
+
+// UI styles follow `documentacion/GUIA_DISENO_ESTILOS.md` —
+// cards: "bg-white border border-slate-200 rounded-lg shadow-sm p-6";
+// tables: thead "bg-slate-50 border-b border-slate-200", tbody "bg-white divide-y divide-slate-200";
+// rows: "hover:bg-slate-50".
+
 
 interface AccountType {
   id: number;
@@ -38,16 +46,7 @@ export function AccountTypesManagement() {
     try {
       const response = await ApiClient.get<any>('/account-types?per_page=100');
       const list = Array.isArray(response) ? response : (response.data || []);
-      // Normalize backend fields to expected frontend interface
-      const normalized = list.map((t: any) => ({
-        id: t.id,
-        code: t.code,
-        name: t.name,
-        category: t.category || '',
-        normal_balance: (t.normal_balance ? t.normal_balance : (t.nature === 'deudora' ? 'debit' : 'credit')) as 'debit' | 'credit',
-        nature: t.nature,
-      }));
-      setAccountTypes(normalized);
+      setAccountTypes(list);
     } catch (error) {
       console.error('Error loading account types:', error);
     } finally {
@@ -134,164 +133,48 @@ export function AccountTypesManagement() {
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800 mb-2">Tipos de Cuenta</h2>
-          <p className="text-slate-600">Configuración de clasificaciones contables</p>
-        </div>
-        <button
-          onClick={() => {
-            setEditing(null);
-            setFormData({ code: '', name: '', category: 'asset', normal_balance: 'debit' });
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
+    <div className="p-6 bg-slate-50 min-h-screen">
+      <h1 className="text-2xl font-bold text-slate-800 mb-6">Gestión de Tipos de Partida</h1>
+      <Card
+        title="Lista de Tipos de Partida"
+        headerRight={
+          <button
+            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
+            onClick={() => setShowModal(true)}
+          >
+            <Plus className="w-5 h-5 inline-block mr-2" /> Nuevo Tipo
+          </button>
+        }
+      >
+        <DataTable
+          columns={[
+            { key: 'code', label: 'Código' },
+            { key: 'name', label: 'Nombre' },
+            { key: 'category', label: 'Categoría' },
+            { key: 'normal_balance', label: 'Balance Normal' },
+            { key: 'actions', label: 'Acciones' },
+          ]}
         >
-          <Plus className="w-5 h-5" />
-          Nuevo Tipo
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Código</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Nombre</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Categoría</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Balance Normal</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-600">
-                    Cargando...
-                  </td>
-                </tr>
-              ) : accountTypes.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-600">
-                    No hay tipos de cuenta configurados
-                  </td>
-                </tr>
-              ) : (
-                accountTypes.map((type) => (
-                  <tr key={type.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{type.code}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800">{type.name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{getCategoryLabel(type.category)}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {type.normal_balance === 'debit' ? 'Débito' : 'Crédito'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => handleEdit(type)}
-                          className="text-slate-600 hover:text-slate-800"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(type.id, type.name)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">
-              {editing ? 'Editar Tipo de Cuenta' : 'Nuevo Tipo de Cuenta'}
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Código *</label>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="ACT"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="Activo Corriente"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Categoría *</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="asset">Activo</option>
-                  <option value="liability">Pasivo</option>
-                  <option value="equity">Patrimonio</option>
-                  <option value="revenue">Ingreso</option>
-                  <option value="expense">Gasto</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Balance Normal *</label>
-                <select
-                  value={formData.normal_balance}
-                  onChange={(e) => setFormData({ ...formData, normal_balance: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="debit">Débito</option>
-                  <option value="credit">Crédito</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditing(null);
-                  setFormData({ code: '', name: '', category: 'asset', normal_balance: 'debit' });
-                }}
-                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          {accountTypes.map((type) => (
+            <tr key={type.id} className="hover:bg-slate-50">
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.code}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.name}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{getCategoryLabel(type.category || '')}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.normal_balance}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                <div className="flex items-center gap-2">
+                  <button className="text-blue-600 hover:text-blue-800" title="Editar" onClick={() => setEditing(type)}>
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button className="text-red-600 hover:text-red-800" title="Eliminar" onClick={() => console.log('Eliminar', type)}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </DataTable>
+      </Card>
     </div>
   );
 }

@@ -101,7 +101,10 @@ export interface JournalEntry {
   company_id: number;
   period_id: number;
   document_type_id: number | null;
+  entry_type?: string;
   entry_number: string;
+  sequence_number?: number;
+  type_number?: number;
   entry_date: string;
   description: string;
   reference: string | null;
@@ -116,6 +119,17 @@ export interface JournalEntry {
   lines?: JournalEntryLine[];
   period?: AccountingPeriod;
   document_type?: DocumentType;
+}
+
+export interface JournalEntryType {
+  id: number;
+  company_id: number;
+  code: string;
+  name: string;
+  active: boolean;
+  has_entries?: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface JournalEntryLine {
@@ -291,6 +305,7 @@ export interface DashboardStats {
   payables: number;
   inventory_value: number;
   journal_entries_count: number;
+  pending_voids_count?: number;
 }
 
 export interface BalanceSheetReport {

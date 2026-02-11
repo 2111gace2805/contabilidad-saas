@@ -93,6 +93,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         items: [
           { id: 'catalog', label: 'Catálogo Contable', icon: BookOpen },
           { id: 'journal', label: 'Pólizas/Asientos', icon: FileText },
+          { id: 'journal-types', label: 'Tipos de Partida', icon: Tag },
           { id: 'reports', label: 'Reportes', icon: BarChart3 },
         ]
       },
@@ -119,6 +120,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         items: [
           { id: 'account-types', label: 'Tipos de Cuenta', icon: Tag },
           { id: 'catalog-config', label: 'Config. Catálogo', icon: Sliders },
+          { id: 'company-users', label: 'Usuarios', icon: Users },
           { id: 'periods', label: 'Períodos Contables', icon: CalendarClock },
         ]
       });
@@ -138,9 +140,8 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
   return (
     <aside
-      className={`bg-slate-800 text-white min-h-screen transition-all duration-300 relative ${
-        isCollapsed ? 'w-16' : 'w-64'
-      }`}
+      className={`bg-slate-800 text-white min-h-screen transition-all duration-300 relative ${isCollapsed ? 'w-16' : 'w-64'
+        }`}
     >
       <div className="flex items-center justify-between p-4 border-b border-slate-700">
         {!isCollapsed && (
@@ -154,9 +155,8 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         )}
         <button
           onClick={toggleCollapse}
-          className={`text-slate-400 hover:text-white transition-colors ${
-            isCollapsed ? 'mx-auto' : ''
-          }`}
+          className={`text-slate-400 hover:text-white transition-colors ${isCollapsed ? 'mx-auto' : ''
+            }`}
           title={isCollapsed ? 'Expandir menú' : 'Contraer menú'}
         >
           {isCollapsed ? (
@@ -187,11 +187,10 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
                   <button
                     key={item.id}
                     onClick={() => onModuleChange(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-slate-700 text-white'
-                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    } ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${isActive
+                      ? 'bg-slate-700 text-white'
+                      : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                      } ${isCollapsed ? 'justify-center' : ''}`}
                     title={isCollapsed ? item.label : undefined}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />

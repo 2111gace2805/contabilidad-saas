@@ -105,9 +105,11 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     // === TRANSACCIONES CONTABLES ===
     
     // Pólizas/Asientos contables
+    Route::get('journal-entries/pending-voids', [JournalEntryController::class, 'pendingVoids']);
     Route::apiResource('journal-entries', JournalEntryController::class);
     Route::post('journal-entries/{entry}/post', [JournalEntryController::class, 'post']);
-    Route::post('journal-entries/{entry}/void', [JournalEntryController::class, 'void']);
+    Route::post('journal-entries/{entry}/request-void', [JournalEntryController::class, 'requestVoid']);
+    Route::post('journal-entries/{entry}/authorize-void', [JournalEntryController::class, 'authorizeVoid']);
     
     // === MÓDULOS OPERATIVOS ===
     
