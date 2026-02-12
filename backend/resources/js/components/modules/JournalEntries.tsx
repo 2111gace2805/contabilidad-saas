@@ -22,6 +22,7 @@ import { DataTable } from '../common/DataTable';
 // tbody "bg-white divide-y divide-slate-200" and rows "hover:bg-slate-50".
 
 import { AccountAutocomplete } from '../common/AccountAutocomplete';
+import { journalEntryTypes as journalTypesApi } from '../../lib/api';
 import type { JournalEntry } from '../../types';
 
 export function JournalEntries() {
@@ -44,6 +45,8 @@ export function JournalEntries() {
     description: '',
   });
 
+  const [journalTypes, setJournalTypes] = useState<any[]>([]);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -64,6 +67,21 @@ export function JournalEntries() {
     if (selectedCompany) {
       loadEntries();
     }
+  }, [selectedCompany]);
+
+  useEffect(() => {
+    // load available journal entry types for the selector
+    const load = async () => {
+      try {
+        const res = await journalTypesApi.getAll();
+        const list = Array.isArray(res) ? res : (res.data || []);
+        setJournalTypes(list);
+      } catch (err) {
+        console.error('Error loading journal entry types:', err);
+      }
+    };
+
+    load();
   }, [selectedCompany]);
 
   const [filters, setFilters] = useState({
@@ -429,13 +447,22 @@ export function JournalEntries() {
                     onChange={(e) => setFormData({ ...formData, entry_type: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none text-sm disabled:bg-slate-50 disabled:text-slate-500"
                   >
-                    <option value="PD">PD - Diario</option>
-                    <option value="PI">PI - Ingresos</option>
-                    <option value="PE">PE - Egresos</option>
-                    <option value="PA">PA - Ajuste</option>
-                    <option value="PB">PB - Bancos</option>
-                    <option value="PC">PC - Caja</option>
-                    <option value="PCIERRE">PCIERRE - Cierre</option>
+                    {journalTypes.length > 0 ? (
+                      journalTypes.map((t: any) => (
+                        <option key={t.id} value={t.code}>{`${t.code} - ${t.name}`}</option>
+                      ))
+                    ) : (
+                      // fallback to known defaults
+                      <>
+                        <option value="PD">PD - Diario</option>
+                        <option value="PI">PI - Ingresos</option>
+                        <option value="PE">PE - Egresos</option>
+                        <option value="PA">PA - Ajuste</option>
+                        <option value="PB">PB - Bancos</option>
+                        <option value="PC">PC - Caja</option>
+                        <option value="PCIERRE">PCIERRE - Cierre</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

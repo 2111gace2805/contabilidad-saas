@@ -169,7 +169,8 @@ class JournalEntryController extends Controller
         $nextTypeNumber = ($lastType->type_number ?? 0) + 1;
 
         $prefix = strtoupper($entry->entry_type);
-        $entryNumber = $prefix . '-' . str_pad($nextTypeNumber, 7, '0', STR_PAD_LEFT);
+        // Format: <PREFIX><7-digit-sequence> e.g. PX0000001
+        $entryNumber = $prefix . str_pad($nextTypeNumber, 7, '0', STR_PAD_LEFT);
 
         $entry->update([
             'sequence_number' => $nextSequence, // We keep global sequence for internal audit/order

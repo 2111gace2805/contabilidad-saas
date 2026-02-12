@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\UnitOfMeasureController;
 use App\Http\Controllers\Api\TaxController;
+use App\Http\Controllers\Api\JournalEntryTypeController;
 
 // Authentication routes (no auth required)
 Route::prefix('auth')->group(function () {
@@ -85,6 +86,8 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     
     // Tipos de cuenta
     Route::apiResource('account-types', AccountTypeController::class);
+    // Tipos de partida (comprobantes)
+    Route::apiResource('journal-entry-types', JournalEntryTypeController::class);
     
     // Segmentos contables
     Route::apiResource('accounting-segments', AccountingSegmentController::class);

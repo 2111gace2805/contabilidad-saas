@@ -369,6 +369,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'PB', 'name' => 'Póliza de Banco', 'active' => true],
             ['code' => 'PC', 'name' => 'Póliza de Caja', 'active' => true],
             ['code' => 'PCIERRE', 'name' => 'Póliza de Cierre', 'active' => true],
+            ['code' => 'PX', 'name' => 'Póliza de Exportación', 'active' => true],
         ];
 
         foreach ($types as $type) {
