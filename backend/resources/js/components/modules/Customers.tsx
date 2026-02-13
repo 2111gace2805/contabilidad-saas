@@ -174,14 +174,26 @@ export function Customers() {
     if (customer) {
       setEditingCustomer(customer);
       setFormData({
-        code: customer.code,
-        name: customer.name,
-        rfc: customer.rfc || '',
-        email: customer.email || '',
+        code: customer.code || '',
+        name: customer.name || '',
+        business_name: (customer as any).business_name || '',
+        profile_type: (customer as any).profile_type || 'natural',
+        rfc: (customer as any).rfc || '',
+        email1: (customer as any).email1 || (customer as any).email || '',
+        email2: (customer as any).email2 || '',
+        email3: (customer as any).email3 || '',
         phone: customer.phone || '',
         address: customer.address || '',
-        credit_limit: customer.credit_limit,
-        payment_terms: customer.payment_terms,
+        credit_limit: customer.credit_limit || '0',
+        payment_terms: customer.payment_terms || 30,
+        nit: (customer as any).nit || '',
+        nrc: (customer as any).nrc || '',
+        dui: (customer as any).dui || '',
+        depa_id: (customer as any).depa_id || '',
+        municipality_id: (customer as any).municipality_id || '',
+        district_id: (customer as any).district_id || '',
+        customer_type_id: (customer as any).customer_type_id || '',
+        economic_activity_id: (customer as any).economic_activity_id || '',
       });
     } else {
       setEditingCustomer(null);
@@ -269,10 +281,10 @@ export function Customers() {
                         {customer.profile_type === 'juridical' ? 'Jurídica' : 'Natural'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{customer.business_name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800">{customer.nit || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800">{customer.nrc || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800">{customer.email || '-'}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{customer.business_name || customer.name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800">{(customer as any).nit || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800">{(customer as any).nrc || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800">{(customer as any).email1 || (customer as any).email || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{customer.phone || '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
