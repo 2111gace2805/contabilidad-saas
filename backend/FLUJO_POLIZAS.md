@@ -39,7 +39,9 @@ Ahora las pólizas siguen un flujo de trabajo de 3 estados:
 
 ### 2. Contabilizada (posted)
 - Estado después de aprobar un borrador
-- **NO se puede editar**
+- **Regla actualizada:**
+- **SÍ se puede editar** siempre y cuando el periodo fiscal donde se encuentra la fecha de la póliza esté **ABIERTO**. Si el periodo está **CERRADO**, no se permite la edición.
+- **No se puede revertir a borrador** si la póliza ya tiene asignado un número/correlativo (sequence_number / entry_number). En ese caso la póliza debe permanecer contabilizada y solo podrá anularse (void) si procede.
 - **NO se puede eliminar**
 - **SÍ afecta** los saldos contables
 - **SÍ aparece** en reportes oficiales
@@ -97,8 +99,8 @@ Ahora las pólizas siguen un flujo de trabajo de 3 estados:
 | Acción | Disponible | Icono | Color |
 |--------|-----------|-------|-------|
 | Ver detalles | ✅ | - | - |
-| Editar | ❌ | - | - |
-| Contabilizar | ❌ | - | - |
+| Editar | ✅ (solo si el periodo fiscal está ABIERTO) | ✏️ | Azul |
+| Contabilizar | ❌ (botón inhabilitado si ya está contabilizada; solo disponible en `Borrador`) | - | - |
 | Eliminar | ❌ | - | - |
 | Anular | ✅ | ⊗ | Naranja |
 
@@ -184,7 +186,11 @@ Podrás revisarla y contabilizarla más tarde desde la lista de pólizas.
 ```
 ¿Contabilizar la póliza "P-001"?
 
-Una vez contabilizada, no se podrá editar ni eliminar.
+Una vez contabilizada:
+
+  - La póliza permanece contabilizada; **no se puede eliminar**.
+  - **Editar:** permitido solo si la fecha de la póliza está dentro de un **periodo fiscal abierto** y la partida resultante queda **cuadrada**; en ese caso el frontend permitirá guardar cambios pero el backend validará el periodo y el balance.
+  - **Revertir a borrador NO está permitido** si la póliza ya tiene un `type_number`/`entry_number` asignado (el `entry_number` usa el formato `TIPO-0000001`, p.ej. `PD-0000001`).
 ```
 
 #### Al Anular

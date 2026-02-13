@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\AccountingPeriod;
 
 class JournalEntry extends Model
 {
@@ -61,15 +62,19 @@ class JournalEntry extends Model
         parent::boot();
 
         static::updating(function ($journalEntry) {
-            if (in_array(strtoupper($journalEntry->getOriginal('status')), ['POSTED', 'VOIDED'])) {
-                throw new \Exception('No se puede modificar una póliza que ya ha sido contabilizada o anulada.');
+            $original = strtoupper($journalEntry->getOriginal('status'));
+            if ($original === 'VOID' || $original === 'VOIDED') {
+                throw new \Exception('No se puede modificar una póliza que ya ha sido anulada.');
             }
+            // NOTE: edits to POSTED entries are allowed when the fiscal period is open.
+            // Business rules (period check, balancing, preventing revert to draft if
+            // sequence_number exists) are enforced in the controller.
         });
     }
 
     public function validateOpenPeriod()
     {
-        $openPeriods = Period::where('company_id', $this->company_id)->where('status', 'OPEN')->get();
+        $openPeriods = AccountingPeriod::where('company_id', $this->company_id)->where('status', 'OPEN')->get();
         $isInOpenPeriod = $openPeriods->contains(function ($period) {
             return $this->entry_date >= $period->start_date && $this->entry_date <= $period->end_date;
         });

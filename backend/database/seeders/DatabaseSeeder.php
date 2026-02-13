@@ -124,6 +124,9 @@ class DatabaseSeeder extends Seeder
 
         // Seed Journal Entry Types
         $this->seedJournalEntryTypes($company);
+
+        // Populate journal entry number sequences per company/type/year
+        $this->call(JournalEntryNumberSequencesSeeder::class);
     }
 
     private function seedAccountTypes(Company $company): void

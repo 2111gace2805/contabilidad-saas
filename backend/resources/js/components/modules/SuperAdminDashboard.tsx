@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiClient } from '../../lib/api';
-import { Building2, Users, Plus, Trash2, UserPlus, Shield, Edit, Lock } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, UserPlus, Shield, Edit, Lock, Unlock } from 'lucide-react';
 import UserAutocomplete from '../common/UserAutocomplete';
 
 interface Company {
@@ -37,9 +37,11 @@ export function SuperAdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'roles'>('companies');
+  const [companyFilter, setCompanyFilter] = useState('');
 
   // Company Form
   const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
   const [companyForm, setCompanyForm] = useState({
     name: '',
     rfc: '',
@@ -110,15 +112,36 @@ export function SuperAdminDashboard() {
     }
 
     try {
-      await ApiClient.post('/super-admin/companies', companyForm);
-      alert('Empresa creada exitosamente');
+      if (editingCompanyId) {
+        await ApiClient.put(`/super-admin/companies/${editingCompanyId}`, companyForm);
+        alert('Empresa actualizada exitosamente');
+      } else {
+        await ApiClient.post('/super-admin/companies', companyForm);
+        alert('Empresa creada exitosamente');
+      }
       setShowCompanyModal(false);
-      setCompanyForm({ name: '', rfc: '', address: '', phone: '', currency: 'USD', fiscal_year_start: 1, admin_user_id: '' });
+      setEditingCompanyId(null);
+      setCompanyForm({ name: '', rfc: '', address: '', phone: '', currency: 'USD', fiscal_year_start: 1, admin_user_id: '', max_users: 3 });
       loadData();
     } catch (error: any) {
       console.error('Error creating company:', error);
       alert('Error: ' + (error?.response?.data?.message || error?.message || 'Error desconocido'));
     }
+  };
+
+  const openEditCompany = (company: Company) => {
+    setEditingCompanyId(company.id);
+    setCompanyForm({
+      name: company.name || '',
+      rfc: company.rfc || '',
+      address: (company as any).address || '',
+      phone: (company as any).phone || '',
+      currency: company.currency || 'USD',
+      fiscal_year_start: (company as any).fiscal_year_start || 1,
+      admin_user_id: '',
+      max_users: company.max_users || 3,
+    });
+    setShowCompanyModal(true);
   };
 
   const handleDeleteCompany = async (company: Company) => {
@@ -297,14 +320,28 @@ export function SuperAdminDashboard() {
       {activeTab === 'companies' && (
         <div>
           <div className="mb-4 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-slate-800">Empresas del Sistema</h3>
-            <button
-              onClick={() => setShowCompanyModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
-            >
-              <Plus className="w-4 h-4" />
-              Nueva Empresa
-            </button>
+            <div>
+              <h3 className="text-xl font-bold text-slate-800">Empresas del Sistema</h3>
+              <p className="text-sm text-slate-500">Filtra por nombre para encontrar empresas rápidamente</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                placeholder="Buscar empresas..."
+                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+              />
+
+              <button
+                onClick={() => setShowCompanyModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
+              >
+                <Plus className="w-4 h-4" />
+                Nueva Empresa
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -313,61 +350,117 @@ export function SuperAdminDashboard() {
             ) : companies.length === 0 ? (
               <div className="col-span-3 text-center py-8 text-slate-600">No hay empresas</div>
             ) : (
-              companies.map((company) => (
-                <div key={company.id} className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="bg-slate-800 p-3 rounded-lg">
-                      <Building2 className="w-6 h-6 text-white" />
-                    </div>
-                    <button
-                      onClick={() => handleDeleteCompany(company)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+              companies
+                .filter((c) => c.name.toLowerCase().includes(companyFilter.toLowerCase()))
+                .map((company) => (
+                  <div key={company.id} className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="bg-slate-800 p-3 rounded-lg">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openEditCompany(company)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Editar"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
 
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">{company.name}</h3>
+                        <button
+                          onClick={() => handleDeleteCompany(company)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
 
-                  <div className="space-y-1 text-sm text-slate-600 mb-4">
-                    <p><span className="font-medium">RFC:</span> {company.rfc}</p>
-                    <p><span className="font-medium">Moneda:</span> {company.currency}</p>
-                    <p><span className="font-medium">Límite Usuarios:</span> {company.max_users}</p>
-                  </div>
+                        {company.active ? (
+                          <button
+                            onClick={async () => {
+                              if ((company.journal_entries_count || 0) > 0) {
+                                alert('No se puede deshabilitar esta empresa porque tiene transacciones registradas.');
+                                return;
+                              }
 
-                  <div className="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-3">
-                    <div>
-                      <div className="text-2xl font-bold text-slate-800">{company.customers_count || 0}</div>
-                      <div className="text-xs text-slate-500">Clientes</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-slate-800">{company.suppliers_count || 0}</div>
-                      <div className="text-xs text-slate-500">Proveedores</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-slate-800">{company.journal_entries_count || 0}</div>
-                      <div className="text-xs text-slate-500">Pólizas</div>
-                    </div>
-                  </div>
+                              if (!confirm(`¿Deshabilitar la empresa "${company.name}"? Esto bloqueará el acceso a administradores y usuarios.`)) return;
 
-                  {company.users && company.users.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-slate-100">
-                      <div className="text-xs text-slate-500 mb-2">Usuarios asignados:</div>
-                      <div className="space-y-1">
-                        {company.users.slice(0, 3).map((u) => (
-                          <div key={u.id} className="text-xs text-slate-600">
-                            {u.name} ({u.pivot.role})
-                          </div>
-                        ))}
-                        {company.users.length > 3 && (
-                          <div className="text-xs text-slate-500">+{company.users.length - 3} más</div>
+                              try {
+                                await ApiClient.put(`/super-admin/companies/${company.id}/disable`, {});
+                                alert('Empresa deshabilitada');
+                                loadData();
+                              } catch (err: any) {
+                                console.error('Error disabling company:', err);
+                                alert('Error: ' + (err?.response?.data?.message || err?.message || 'Error desconocido'));
+                              }
+                            }}
+                            className="text-slate-600 hover:text-slate-800"
+                            title="Deshabilitar"
+                          >
+                            <Lock className="w-5 h-5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`¿Habilitar la empresa "${company.name}"?`)) return;
+                              try {
+                                await ApiClient.put(`/super-admin/companies/${company.id}/enable`, {});
+                                alert('Empresa habilitada');
+                                loadData();
+                              } catch (err: any) {
+                                console.error('Error enabling company:', err);
+                                alert('Error: ' + (err?.response?.data?.message || err?.message || 'Error desconocido'));
+                              }
+                            }}
+                            className="text-emerald-600 hover:text-emerald-800"
+                            title="Habilitar"
+                          >
+                            <Unlock className="w-5 h-5" />
+                          </button>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
-              ))
+
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{company.name}</h3>
+
+                    <div className="space-y-1 text-sm text-slate-600 mb-4">
+                      <p><span className="font-medium">RFC:</span> {company.rfc}</p>
+                      <p><span className="font-medium">Moneda:</span> {company.currency}</p>
+                      <p><span className="font-medium">Límite Usuarios:</span> {company.max_users}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-3">
+                      <div>
+                        <div className="text-2xl font-bold text-slate-800">{company.customers_count || 0}</div>
+                        <div className="text-xs text-slate-500">Clientes</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-slate-800">{company.suppliers_count || 0}</div>
+                        <div className="text-xs text-slate-500">Proveedores</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-slate-800">{company.journal_entries_count || 0}</div>
+                        <div className="text-xs text-slate-500">Pólizas</div>
+                      </div>
+                    </div>
+
+                    {company.users && company.users.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-slate-100">
+                        <div className="text-xs text-slate-500 mb-2">Usuarios asignados:</div>
+                        <div className="space-y-1">
+                          {company.users.slice(0, 3).map((u) => (
+                            <div key={u.id} className="text-xs text-slate-600">
+                              {u.name} ({u.pivot.role})
+                            </div>
+                          ))}
+                          {company.users.length > 3 && (
+                            <div className="text-xs text-slate-500">+{company.users.length - 3} más</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
             )}
           </div>
         </div>

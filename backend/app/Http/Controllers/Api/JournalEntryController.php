@@ -151,33 +151,50 @@ class JournalEntryController extends Controller
             throw new \Exception('El debe y el haber deben estar cuadrados para contabilizar');
         }
 
-        // Get last global sequence number
-        $lastGlobal = JournalEntry::lockForUpdate()
-            ->where('company_id', $entry->company_id)
-            ->whereNotNull('sequence_number')
-            ->orderBy('sequence_number', 'desc')
-            ->first();
-        $nextSequence = ($lastGlobal->sequence_number ?? 0) + 1;
+        // Use journal_entry_sequences table to obtain immutable, per-company-per-type-per-year sequences
+        $fiscalYear = (int) date('Y', strtotime($entry->entry_date));
 
-        // Get last type-specific number
-        $lastType = JournalEntry::lockForUpdate()
-            ->where('company_id', $entry->company_id)
-            ->where('entry_type', $entry->entry_type)
-            ->whereNotNull('type_number')
-            ->orderBy('type_number', 'desc')
-            ->first();
-        $nextTypeNumber = ($lastType->type_number ?? 0) + 1;
+        DB::transaction(function () use ($entry, $fiscalYear, &$entryNumber, &$nextTypeNumber) {
+            $seq = DB::table('journal_entry_number_sequences')
+                ->where('company_id', $entry->company_id)
+                ->where('entry_type', $entry->entry_type)
+                ->where('fiscal_year', $fiscalYear)
+                ->lockForUpdate()
+                ->first();
 
-        $prefix = strtoupper($entry->entry_type);
-        // Format: <PREFIX><7-digit-sequence> e.g. PX0000001
-        $entryNumber = $prefix . str_pad($nextTypeNumber, 7, '0', STR_PAD_LEFT);
+            if (!$seq) {
+                // create initial sequence row
+                $id = (string) \Illuminate\Support\Str::uuid();
+                DB::table('journal_entry_number_sequences')->insert([
+                    'id' => $id,
+                    'company_id' => $entry->company_id,
+                    'entry_type' => $entry->entry_type,
+                    'fiscal_year' => $fiscalYear,
+                    'current_number' => 1,
+                    'prefix' => strtoupper($entry->entry_type),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
-        $entry->update([
-            'sequence_number' => $nextSequence, // We keep global sequence for internal audit/order
-            'type_number' => $nextTypeNumber,
-            'entry_number' => $entryNumber,
-            'status' => JournalEntry::STATUS_POSTED,
-        ]);
+                $nextTypeNumber = 1;
+            } else {
+                $nextTypeNumber = $seq->current_number + 1;
+                DB::table('journal_entry_number_sequences')
+                    ->where('id', $seq->id)
+                    ->update(['current_number' => $nextTypeNumber, 'updated_at' => now()]);
+            }
+
+            $prefix = strtoupper($entry->entry_type);
+            $entryNumber = $prefix . '-' . str_pad($nextTypeNumber, 7, '0', STR_PAD_LEFT);
+
+            // Assign numbers and mark as posted
+            $entry->update([
+                'sequence_number' => null, // keep null for global sequence (deprecated)
+                'type_number' => $nextTypeNumber,
+                'entry_number' => $entryNumber,
+                'status' => JournalEntry::STATUS_POSTED,
+            ]);
+        });
     }
 
     public function show(Request $request, $id)
@@ -185,7 +202,7 @@ class JournalEntryController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $entry = JournalEntry::where('company_id', $companyId)
-            ->with(['lines.account', 'creator', 'voider'])
+            ->with(['lines.account', 'creator', 'voidRequestedBy', 'voidAuthorizedBy'])
             ->findOrFail($id);
         
         return response()->json($entry);
@@ -197,8 +214,27 @@ class JournalEntryController extends Controller
         
         $entry = JournalEntry::where('company_id', $companyId)->findOrFail($id);
         
-        if (strtoupper($entry->status) !== 'DRAFT') {
-            return response()->json(['message' => 'Solo se pueden actualizar pólizas en borrador'], 400);
+        $originalStatus = strtoupper($entry->status);
+        $requestedStatus = strtoupper($request->status ?? $entry->status);
+
+        if ($originalStatus === 'VOID' || $originalStatus === 'VOIDED') {
+            return response()->json(['message' => 'No se pueden modificar pólizas anuladas'], 400);
+        }
+
+        if ($originalStatus === 'POSTED') {
+            // Allow editing posted entries only if the fiscal period is open
+            try {
+                $entry->validateOpenPeriod();
+            } catch (\Exception $e) {
+                return response()->json(['message' => $e->getMessage()], 400);
+            }
+
+            // Prevent reverting to draft if a type_number/entry_number was already assigned
+            if ($requestedStatus === 'DRAFT' && ($entry->type_number || $entry->entry_number)) {
+                return response()->json(['message' => 'No se puede volver a borrador una póliza que ya tiene número asignado'], 400);
+            }
+        } elseif ($originalStatus !== 'DRAFT') {
+            return response()->json(['message' => 'Solo se pueden actualizar pólizas en borrador o pólizas contabilizadas si el periodo está abierto'], 400);
         }
 
         $validator = Validator::make($request->all(), [
@@ -304,6 +340,13 @@ class JournalEntryController extends Controller
         
         if (strtoupper($entry->status) !== 'DRAFT') {
             return response()->json(['message' => 'Solo se pueden contabilizar pólizas en borrador'], 400);
+        }
+
+        // Verify period is open for the entry date
+        try {
+            $entry->validateOpenPeriod();
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
         }
 
         DB::beginTransaction();

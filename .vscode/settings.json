@@ -2,6 +2,9 @@
     "chat.tools.terminal.autoApprove": {
         "docker-compose": true,
         "npm run dev": true,
-        "true": true
+        "true": true,
+        "mv": true,
+        "Test-Path": true,
+        "Set-Content": true
     }
 }

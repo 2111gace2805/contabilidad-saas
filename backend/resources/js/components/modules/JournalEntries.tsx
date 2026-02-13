@@ -63,6 +63,12 @@ export function JournalEntries() {
     setTotals({ debit, credit });
   }, [lines]);
 
+  const canEdit = (() => {
+    if (!editing) return true;
+    const s = String(editing.status || '').toUpperCase();
+    return s === 'DRAFT' || s === 'POSTED';
+  })();
+
   useEffect(() => {
     if (selectedCompany) {
       loadEntries();
@@ -122,7 +128,7 @@ export function JournalEntries() {
   }, [filters]);
 
   const handlePost = async (entry: JournalEntry) => {
-    if (!confirm(`¿Contabilizar póliza? Se le asignará un correlativo permanente y no podrá ser editada.`)) return;
+    if (!confirm(`¿Contabilizar póliza? Se le asignará un correlativo permanente y no podrá ser cambiado el correlativo`)) return;
 
     try {
       const full = await journalApi.getById(entry.id);
@@ -147,6 +153,31 @@ export function JournalEntries() {
       console.error('Error posting entry:', error);
       alert('Error al contabilizar: ' + (error?.message || 'Error desconocido'));
     }
+  };
+
+  const handleEdit = (entry: JournalEntry) => {
+    setEditing(entry);
+    setFormData({
+      entry_number: entry.entry_number || '',
+      entry_date: entry.entry_date || new Date().toISOString().split('T')[0],
+      entry_type: entry.entry_type || 'PD',
+      description: entry.description || '',
+    });
+
+    setLines((entry.lines || []).map((l: any) => ({
+      line_number: l.line_number,
+      account_id: l.account_id,
+      description: l.description || '',
+      debit: String(l.debit || '0.00'),
+      credit: String(l.credit || '0.00'),
+    })));
+
+    setShowModal(true);
+  };
+
+  const handleVoid = (entry: JournalEntry) => {
+    setEntryToVoid(entry);
+    setShowVoidModal(true);
   };
 
   const handleRequestVoid = async () => {
@@ -241,15 +272,28 @@ export function JournalEntries() {
       }
     }
 
-    if (asPosted && (Math.abs(totals.debit - totals.credit) >= 0.01 || totals.debit <= 0)) {
+    // If creating new and asking to post, ensure balanced
+    if (!editing && asPosted && (Math.abs(totals.debit - totals.credit) >= 0.01 || totals.debit <= 0)) {
       alert('No es posible contabilizar: la póliza debe estar cuadrada y con montos mayores a cero.');
       return;
     }
 
+    // If editing an already posted entry, require that the entry remains balanced to allow saving
+    const isEditingPosted = editing && String(editing.status || '').toUpperCase() === 'POSTED';
+    if (isEditingPosted) {
+      if (Math.abs(totals.debit - totals.credit) >= 0.01 || totals.debit <= 0) {
+        alert('No se pueden guardar cambios: la póliza contabilizada debe estar cuadrada.');
+        return;
+      }
+    }
+
     try {
+      const targetStatus = editing ? String(editing.status || '').toUpperCase() : (asPosted ? 'POSTED' : 'DRAFT');
+
       const payload = {
         ...formData,
-        status: asPosted ? 'posted' : 'draft',
+        // Keep original status when editing an existing entry unless explicitly posting
+        status: (editing ? targetStatus : (asPosted ? 'posted' : 'draft')).toLowerCase(),
         lines: nonBlankLines.map((l, idx) => ({
           account_id: l.account_id,
           line_number: idx + 1,
@@ -267,7 +311,17 @@ export function JournalEntries() {
 
       setShowModal(false);
       loadEntries();
-      alert(asPosted ? 'Póliza contabilizada exitosamente.' : 'Borrador guardado correctamente.');
+
+      if (editing) {
+        // If editing an entry that was posted, indicate changes saved
+        if (String(editing.status || '').toUpperCase() === 'POSTED') {
+          alert('Cambios guardados en póliza contabilizada.');
+        } else {
+          alert('Borrador guardado correctamente.');
+        }
+      } else {
+        alert(asPosted ? 'Póliza contabilizada exitosamente.' : 'Borrador guardado correctamente.');
+      }
     } catch (error: any) {
       console.error('Error saving:', error);
       alert('Error al guardar: ' + (error?.message || 'Error desconocido'));
@@ -342,7 +396,7 @@ export function JournalEntries() {
           {entries.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((entry) => (
             <tr key={entry.id} className="hover:bg-slate-50">
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.entry_number}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.correlativo}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.type_number ? String(entry.type_number).padStart(7, '0') : ''}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.entry_date}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.entry_type}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{entry.description}</td>
@@ -352,9 +406,15 @@ export function JournalEntries() {
                   <button className="text-blue-600 hover:text-blue-800" title="Editar" onClick={() => handleEdit(entry)}>
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button className="text-green-600 hover:text-green-800" title="Contabilizar" onClick={() => handlePost(entry)}>
-                    <CheckCircle className="w-4 h-4" />
-                  </button>
+                  {String(entry.status).toUpperCase() === 'DRAFT' ? (
+                    <button className="text-green-600 hover:text-green-800" title="Contabilizar" onClick={() => handlePost(entry)}>
+                      <CheckCircle className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button className="text-slate-300 cursor-not-allowed" title="Contabilizada" disabled>
+                      <CheckCircle className="w-4 h-4" />
+                    </button>
+                  )}
                   <button className="text-red-600 hover:text-red-800" title="Anular" onClick={() => handleVoid(entry)}>
                     <XCircle className="w-4 h-4" />
                   </button>
@@ -408,9 +468,9 @@ export function JournalEntries() {
                 {editing && (
                   <div className="mt-1 flex items-center gap-2">
                     {getStatusBadge(editing.status)}
-                    {editing.sequence_number && (
+                    {editing.entry_number && (
                       <span className="text-xs font-mono text-slate-500">
-                        #{String(editing.sequence_number).padStart(7, '0')}
+                        {editing.entry_number}
                       </span>
                     )}
                   </div>
@@ -489,7 +549,7 @@ export function JournalEntries() {
               <div className="border border-slate-200 rounded-lg overflow-hidden">
                 <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
                   <h4 className="text-sm font-bold text-slate-700">Detalle de Movimientos</h4>
-                  {(!editing || editing.status.toUpperCase() === 'DRAFT') && (
+                  {canEdit && (
                     <button
                       onClick={() => {
                         const nextNum = (lines.length ? Math.max(...lines.map(l => Number(l.line_number || 0))) : 0) + 1;
@@ -517,7 +577,7 @@ export function JournalEntries() {
                       <tr key={idx} className="group hover:bg-slate-50/50">
                         <td className="px-4 py-2 align-top">
                           <AccountAutocomplete
-                            disabled={editing && editing.status.toUpperCase() !== 'DRAFT'}
+                            disabled={!canEdit}
                             value={line.account_id || ''}
                             onChange={(accountId) => {
                               const newLines = [...lines];
@@ -529,7 +589,7 @@ export function JournalEntries() {
                         <td className="px-4 py-2 align-top">
                           <input
                             type="text"
-                            readOnly={editing && editing.status.toUpperCase() !== 'DRAFT'}
+                            readOnly={!canEdit}
                             value={line.description || ''}
                             onChange={(e) => {
                               const newLines = [...lines];
@@ -544,7 +604,7 @@ export function JournalEntries() {
                           <input
                             type="number"
                             step="0.01"
-                            readOnly={editing && editing.status.toUpperCase() !== 'DRAFT'}
+                            readOnly={!canEdit}
                             value={line.debit}
                             onChange={(e) => {
                               const newLines = [...lines];
@@ -558,7 +618,7 @@ export function JournalEntries() {
                           <input
                             type="number"
                             step="0.01"
-                            readOnly={editing && editing.status.toUpperCase() !== 'DRAFT'}
+                            readOnly={!canEdit}
                             value={line.credit}
                             onChange={(e) => {
                               const newLines = [...lines];
@@ -568,7 +628,7 @@ export function JournalEntries() {
                             className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm text-right outline-none focus:ring-1 focus:ring-slate-500 disabled:bg-slate-50"
                           />
                         </td>
-                        {(!editing || editing.status.toUpperCase() === 'DRAFT') && (
+                        {canEdit && (
                           <td className="px-2 py-2 text-center align-top pt-3">
                             <button
                               onClick={() => {
@@ -623,7 +683,7 @@ export function JournalEntries() {
                 Cerrar
               </button>
 
-              {(!editing || editing.status.toUpperCase() === 'DRAFT') && (
+              {(!editing || String(editing?.status || '').toUpperCase() === 'DRAFT') && (
                 <>
                   <button
                     onClick={() => handleSave(false)}
@@ -638,6 +698,17 @@ export function JournalEntries() {
                   >
                     <CheckCircle className="w-4 h-4" />
                     Contabilizar
+                  </button>
+                </>
+              )}
+
+              {editing && String(editing.status).toUpperCase() === 'POSTED' && (
+                <>
+                  <button
+                    onClick={() => handleSave(false)}
+                    className="px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium"
+                  >
+                    Guardar Cambios
                   </button>
                 </>
               )}

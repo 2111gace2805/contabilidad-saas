@@ -16,17 +16,17 @@ Las siguientes reglas son OBLIGATORIAS y no deben ser alteradas ni reinterpretad
 - Visualmente se muestra con relleno de ceros a la izquierda (zero padding).
 - Longitud estándar: 7 dígitos.
 
-Ejemplo:
-0000001
-0000002
-0000003
+Example:
 
-## 2. Alcance del correlativo
+Empresa A:
+D-2025-000001
+I-2025-000001
+E-2025-000001
 
-- El correlativo es único por empresa (company_id).
-- El correlativo se genera de forma **independiente por cada tipo de partida**.
-- El correlativo se reinicia por período fiscal (año) si la empresa lo configura explícitamente.
-
+Empresa B:
+D-2025-000001
+I-2025-000001
+E-2025-000001
 ## 3. Tipos de Partida
 
 - El sistema permite la gestión (CRUD) de tipos de partida.
@@ -88,3 +88,64 @@ Una partida puede tener los siguientes estados:
 
 Estas reglas tienen prioridad absoluta sobre cualquier decisión técnica,
 refactorización, sugerencia automática del IDE o autocompletado.
+
+
+## 8. Correlativos Contables (Numeración de Pólizas)
+
+El número de póliza NO depende del ID autoincremental.
+
+Cada empresa tiene correlativos independientes por:
+
+- Tipo de partida
+- Año fiscal
+
+Tipos de partida:
+- diario
+- ingreso
+- egreso
+
+La numeración es independiente por empresa y por tipo.
+
+Ejemplo:
+
+Empresa A:
+D-2025-000001
+I-2025-000001
+E-2025-000001
+
+Empresa B:
+D-2025-000001
+I-2025-000001
+E-2025-000001
+
+### Tabla utilizada
+
+`journal_entry_sequences`
+
+Campos:
+- `id` (uuid)
+- `company_id` (uuid)
+- `entry_type` (string)
+- `fiscal_year` (int)
+- `current_number` (int)
+- `prefix` (string)
+
+Restricción única:
+- (`company_id`, `entry_type`, `fiscal_year`)
+
+### Reglas técnicas obligatorias
+
+1. La generación debe ejecutarse dentro de `DB::transaction()`.
+2. Se debe usar `lockForUpdate()` al obtener el correlativo.
+3. No se puede usar `MAX()`, `COUNT()` o id autoincremental para calcular el siguiente número.
+4. La numeración debe ser inmutable: una vez asignado el número no se modifica.
+5. No se reutilizan números anulados.
+6. El correlativo no depende del id de la póliza.
+
+Implementación en este repositorio:
+- Se agregó la migración `create_journal_entry_sequences_table`.
+- El seeder `JournalEntrySequencesSeeder` está disponible para crear filas iniciales si se desea.
+- El controlador `JournalEntryController::assignNumbersAndPost` ahora utiliza `journal_entry_sequences` dentro de una transacción y con `lockForUpdate()` para asignar `type_number` y `entry_number`.
+
+Nota: el campo `sequence_number` previo queda en desuso en favor de la numeración por tipo (`type_number`) y `entry_number` formateado con prefijo.
+

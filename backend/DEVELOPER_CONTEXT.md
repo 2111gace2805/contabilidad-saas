@@ -3,10 +3,13 @@
 Este documento define las reglas críticas de inmutabilidad y el flujo de anulación implementado en el sistema.
 
 ## 1. Inmutabilidad de Pólizas
-Una vez que una póliza de diario (Journal Entry) pasa al estado **POSTED (Contabilizada)**, se vuelve estrictamente **inmutable**.
+Las reglas han sido ajustadas: las pólizas contabilizadas (`POSTED`) pueden ser editadas bajo condiciones controladas.
 
-- **No se puede editar**: Cualquier intento de actualizar campos a través de la API devolverá un error 403/400.
-- **No se puede eliminar**: Las pólizas contabilizadas no pueden ser borradas de la base de datos para mantener la integridad de la auditoría.
+- **Edición de pólizas contabilizadas:** Se permite la edición de pólizas cuyo estado original es `POSTED` siempre y cuando la fecha de la póliza se encuentre dentro de un **periodo fiscal abierto**. El controlador `JournalEntryController` valida este requisito antes de permitir la actualización.
+- **Revertir a borrador:** No se permite cambiar el estado de una póliza `POSTED` a `DRAFT` si la póliza ya tiene asignado un `sequence_number` o `entry_number` (correlativo). Esto evita romper la numeración contable.
+- **Anuladas (VOID):** Las pólizas en estado `VOID` o `VOIDED` siguen siendo inmutables y no pueden editarse ni eliminarse.
+
+Nota: El modelo anteriormente contenía una restricción global que prevenía cualquier `update` si el estado original era `POSTED`. Esa lógica fue relajada en el hook `boot()` del modelo para delegar las validaciones específicas al controlador.
 
 ## 2. Flujo de Anulación
 Para corregir una póliza contabilizada, se debe seguir el flujo de anulación bajo autorización:

@@ -127,6 +127,71 @@ Response:
 }
 ```
 
+## Super Admin - Companies
+
+These endpoints are restricted to users with the `super.admin` role. They are used by the Super Admin UI (frontend component: `resources/js/components/modules/SuperAdminDashboard.tsx`).
+
+### List Companies (Super Admin)
+```
+GET /api/super-admin/companies
+Authorization: Bearer {token}
+```
+
+### Create Company (Super Admin)
+```
+POST /api/super-admin/companies
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "New Company",
+  "rfc": "RFC123",
+  "currency": "USD",
+  "address": "123 Main St",
+  "max_users": 3
+}
+```
+
+### Update Company (Super Admin)
+```
+PUT /api/super-admin/companies/{id}
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Updated Company Name",
+  "rfc": "NEWRFC",
+  "address": "Updated address",
+  "currency": "MXN",
+  "fiscal_year_start": "2024-01-01",
+  "max_users": 5
+}
+```
+
+### Disable Company (Super Admin)
+Note: Companies that have transactions (customers/suppliers/journal entries) cannot be disabled or deleted. The server will return a 400/403 with a message when this restriction applies.
+```
+PUT /api/super-admin/companies/{id}/disable
+Authorization: Bearer {token}
+```
+
+### Enable Company (Super Admin)
+```
+PUT /api/super-admin/companies/{id}/enable
+Authorization: Bearer {token}
+```
+
+### Delete Company (Super Admin)
+```
+DELETE /api/super-admin/companies/{id}
+Authorization: Bearer {token}
+```
+
+### Notes
+- Middleware: The application uses a `SetCompanyContext` middleware that will reject requests scoped to an inactive company with a 403 response. When a company is disabled via the Super Admin endpoints above, company-scoped requests using `X-Company-Id` for that company will be blocked.
+- Frontend: The Super Admin UI component `resources/js/components/modules/SuperAdminDashboard.tsx` was updated to add a search filter, an "Editar" button to update companies, and an enable/disable toggle (lock/unlock icons) that calls the endpoints described above.
+
+
 ## Chart of Accounts
 
 ### List Accounts
