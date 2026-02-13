@@ -16,12 +16,24 @@ export function Customers() {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
+    business_name: '',
+    profile_type: 'natural',
     rfc: '',
-    email: '',
+    email1: '',
+    email2: '',
+    email3: '',
     phone: '',
     address: '',
     credit_limit: '0',
     payment_terms: 30,
+    nit: '',
+    nrc: '',
+    dui: '',
+    depa_id: '',
+    municipality_id: '',
+    district_id: '',
+    customer_type_id: '',
+    economic_activity_id: '',
   });
 
   useEffect(() => {
@@ -71,16 +83,33 @@ export function Customers() {
       return;
     }
 
+    if (!formData.email1.trim()) {
+      alert('El email principal (Email1) es obligatorio');
+      return;
+    }
+
     try {
       const customerData = {
         code: formData.code.trim(),
         name: formData.name.trim(),
+        business_name: formData.business_name.trim() || null,
+        profile_type: formData.profile_type,
         rfc: formData.rfc.trim() || null,
-        email: formData.email.trim() || null,
+        email1: formData.email1.trim() || null,
+        email2: formData.email2.trim() || null,
+        email3: formData.email3.trim() || null,
         phone: formData.phone.trim() || null,
         address: formData.address.trim() || null,
         credit_limit: formData.credit_limit,
         payment_terms: formData.payment_terms,
+        nit: formData.nit.trim() || null,
+        nrc: formData.nrc.trim() || null,
+        dui: formData.dui.trim() || null,
+        depa_id: formData.depa_id || null,
+        municipality_id: formData.municipality_id || null,
+        district_id: formData.district_id || null,
+        customer_type_id: formData.customer_type_id || null,
+        economic_activity_id: formData.economic_activity_id || null,
         active: true,
       };
 
@@ -110,12 +139,24 @@ export function Customers() {
     setFormData({
       code: '',
       name: '',
+      business_name: '',
+      profile_type: 'natural',
       rfc: '',
-      email: '',
+      email1: '',
+      email2: '',
+      email3: '',
       phone: '',
       address: '',
       credit_limit: '0',
       payment_terms: 30,
+      nit: '',
+      nrc: '',
+      dui: '',
+      depa_id: '',
+      municipality_id: '',
+      district_id: '',
+      customer_type_id: '',
+      economic_activity_id: '',
     });
   };
 

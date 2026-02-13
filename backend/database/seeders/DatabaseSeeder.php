@@ -129,6 +129,9 @@ class DatabaseSeeder extends Seeder
         $this->call(JournalEntryNumberSequencesSeeder::class);
         // Populate invoice sequences per company/year (facturación / CxC)
         $this->call(InvoiceSequencesSeeder::class);
+        // Seed customer types and economic activities
+        $this->call(CustomerTypesSeeder::class);
+        $this->call(EconomicActivitiesSeeder::class);
     }
 
     private function seedAccountTypes(Company $company): void
