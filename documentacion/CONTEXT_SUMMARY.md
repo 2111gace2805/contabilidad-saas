@@ -59,6 +59,8 @@ No mezclar company_id.
 
 El módulo de facturación genera automáticamente pólizas contables y maneja correlativos independientes por empresa.
 
+Implementación reciente: se añadieron migraciones y un seeder para manejar los correlativos de facturación (`invoice_sequences`) por empresa y año fiscal. La generación de correlativos se implementa usando transacciones y `lockForUpdate()` para cumplir con las NIF y evitar condiciones de carrera.
+
 
 
 ## Uso Futuro
