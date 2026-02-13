@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\UnitOfMeasureController;
 use App\Http\Controllers\Api\TaxController;
 use App\Http\Controllers\Api\JournalEntryTypeController;
+use App\Http\Controllers\Api\CatalogController;
 
 // Authentication routes (no auth required)
 Route::prefix('auth')->group(function () {
@@ -121,6 +122,13 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     
     // Clientes
     Route::apiResource('customers', CustomerController::class);
+
+    // Catalogs for billing / CxC
+    Route::get('catalogs/departments', [CatalogController::class, 'departments']);
+    Route::get('catalogs/municipalities', [CatalogController::class, 'municipalities']);
+    Route::get('catalogs/districts', [CatalogController::class, 'districts']);
+    Route::get('catalogs/customer-types', [CatalogController::class, 'customerTypes']);
+    Route::get('catalogs/economic-activities', [CatalogController::class, 'economicActivities']);
 
     // (remaining routes omitted) - end of company-scoped group
 });

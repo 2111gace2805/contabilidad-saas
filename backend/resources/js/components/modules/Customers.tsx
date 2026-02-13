@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
-import { customers as customersApi } from '../../lib/api';
+import { customers as customersApi, catalogs as catalogsApi } from '../../lib/api';
 import { Plus, Edit2, Trash2, Users as UsersIcon } from 'lucide-react';
 import { saveFormData, loadFormData, clearFormData, getFormKey } from '../../lib/formPersistence';
 import { usePersistedState } from '../../hooks/usePersistedState';
@@ -35,6 +35,11 @@ export function Customers() {
     customer_type_id: '',
     economic_activity_id: '',
   });
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [municipalities, setMunicipalities] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [customerTypes, setCustomerTypes] = useState<any[]>([]);
+  const [economicActivities, setEconomicActivities] = useState<any[]>([]);
 
   useEffect(() => {
     if (selectedCompany) {
@@ -160,6 +165,25 @@ export function Customers() {
     });
   };
 
+  useEffect(() => {
+    // Load catalogs when modal opens
+    const loadCatalogs = async () => {
+      try {
+        const deps = await catalogsApi.getDepartments();
+        setDepartments(deps || []);
+        const types = await catalogsApi.getCustomerTypes();
+        setCustomerTypes(types || []);
+        const acts = await catalogsApi.getEconomicActivities();
+        setEconomicActivities(acts || []);
+      } catch (err) {
+        console.error('Error loading catalogs:', err);
+      }
+    };
+
+    if (showModal) {
+      loadCatalogs();
+    }
+  }, [showModal]);
   const handleCancel = () => {
     if (selectedCompany) {
       const formKey = getFormKey(selectedCompany.id, 'customer');
@@ -174,6 +198,151 @@ export function Customers() {
     if (customer) {
       setEditingCustomer(customer);
       setFormData({
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email principal (Email1) <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  value={formData.email1}
+                  onChange={(e) => setFormData({ ...formData, email1: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="cliente@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email secundario (Email2)</label>
+                <input
+                  type="email"
+                  value={formData.email2}
+                  onChange={(e) => setFormData({ ...formData, email2: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="secundario@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">DUI</label>
+                <input
+                  type="text"
+                  value={formData.dui}
+                  onChange={(e) => setFormData({ ...formData, dui: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="12345678-9"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">NIT</label>
+                <input
+                  type="text"
+                  value={formData.nit}
+                  onChange={(e) => setFormData({ ...formData, nit: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="0614-050998-102-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">NRC</label>
+                <input
+                  type="text"
+                  value={formData.nrc}
+                  onChange={(e) => setFormData({ ...formData, nrc: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="NRC12345"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
+                <select
+                  value={formData.depa_id}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, depa_id: val, municipality_id: '', district_id: '' });
+                    // Load municipalities for selected department
+                    try {
+                      const munis = await catalogsApi.getMunicipalities({ depa_id: val });
+                      setMunicipalities(munis || []);
+                      setDistricts([]);
+                    } catch (err) {
+                      console.error('Error loading municipalities:', err);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Municipio</label>
+                <select
+                  value={formData.municipality_id}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, municipality_id: val, district_id: '' });
+                    try {
+                      const dists = await catalogsApi.getDistricts({ municipality_id: val });
+                      setDistricts(dists || []);
+                    } catch (err) {
+                      console.error('Error loading districts:', err);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {municipalities.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Distrito</label>
+                <select
+                  value={formData.district_id}
+                  onChange={(e) => setFormData({ ...formData, district_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Cliente</label>
+                <select
+                  value={formData.customer_type_id}
+                  onChange={(e) => setFormData({ ...formData, customer_type_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {customerTypes.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Actividad Económica</label>
+                <select
+                  value={formData.economic_activity_id}
+                  onChange={(e) => setFormData({ ...formData, economic_activity_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">-- Seleccionar --</option>
+                  {economicActivities.map((a) => (
+                    <option key={a.id} value={a.id}>{a.id} - {a.name}</option>
+                  ))}
+                </select>
+              </div>
         code: customer.code || '',
         name: customer.name || '',
         business_name: (customer as any).business_name || '',

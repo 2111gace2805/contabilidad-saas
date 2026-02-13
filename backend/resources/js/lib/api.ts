@@ -413,6 +413,31 @@ export const invoices = {
   },
 };
 
+// Catalogs (billing/customer related)
+export const catalogs = {
+  async getDepartments() {
+    return ApiClient.get<{ id: string; name: string }[]>('/catalogs/departments');
+  },
+
+  async getMunicipalities(params?: { depa_id?: string }) {
+    const qs = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+    return ApiClient.get<any[]>(`/catalogs/municipalities${qs}`);
+  },
+
+  async getDistricts(params?: { municipality_id?: string }) {
+    const qs = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+    return ApiClient.get<any[]>(`/catalogs/districts${qs}`);
+  },
+
+  async getCustomerTypes() {
+    return ApiClient.get<any[]>('/catalogs/customer-types');
+  },
+
+  async getEconomicActivities() {
+    return ApiClient.get<any[]>('/catalogs/economic-activities');
+  },
+};
+
 // Bills API
 export const bills = {
   async getAll() {
