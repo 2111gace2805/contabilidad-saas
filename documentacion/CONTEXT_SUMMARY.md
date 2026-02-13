@@ -43,6 +43,23 @@ A continuación, se detalla la descripción general de cada archivo Markdown inc
 - **/Users/boris/projects/contabilidad-saas/backend/GUIA_USO.md:** Guía de uso para el sistema contable multi-empresa, desde el registro de usuarios hasta la creación de empresas.
 
 ---
+## Módulo de Facturación
+
+Las facturas generan automáticamente pólizas contables.
+
+No deben registrarse manualmente las pólizas de venta.
+
+El estado POSTED es inmutable.
+
+La generación del correlativo debe usar lockForUpdate().
+
+Nunca usar MAX() para generar correlativos.
+
+No mezclar company_id.
+
+El módulo de facturación genera automáticamente pólizas contables y maneja correlativos independientes por empresa.
+
+
 
 ## Uso Futuro
 Este archivo sirve como un índice principal para entender rápidamente la infraestructura y documentación del proyecto. Puede ser utilizado como referencia para nuevos desarrolladores o para mantener la consistencia en futuras actualizaciones.
