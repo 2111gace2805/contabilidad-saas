@@ -29,7 +29,9 @@ class CustomerController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('business_name', 'like', "%{$search}%")
                   ->orWhere('rfc', 'like', "%{$search}%")
+                  ->orWhere('email1', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -50,21 +52,24 @@ class CustomerController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50',
+            'code' => 'required|string|max:50|unique:customers,code,NULL,id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
+            'business_name' => 'nullable|string|max:255',
+            'profile_type' => 'required|in:natural,juridical',
+            'contact_name' => 'nullable|string|max:255',
             'email1' => 'required|email|max:255',
             'email2' => 'nullable|email|max:255',
             'email3' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
+            'phone' => 'required|string|max:50',
+            'address' => 'required|string',
             'credit_limit' => 'nullable|numeric|min:0',
             'credit_days' => 'nullable|integer|min:0',
             'active' => 'boolean',
             'customer_type_id' => 'nullable|exists:customer_types,id',
             'economic_activity_id' => 'nullable|string|size:5',
-            'depa_id' => 'nullable|string|max:10',
-            'municipality_id' => 'nullable|integer',
-            'district_id' => 'nullable|integer',
+            'depa_id' => 'required|string|max:10',
+            'municipality_id' => 'required|integer',
+            'district_id' => 'required|integer',
             'nit' => 'nullable|string|max:17',
             'nrc' => 'nullable|string',
             'dui' => 'nullable|string|max:10',
@@ -79,6 +84,9 @@ class CustomerController extends Controller
 
         $data = $validator->validated();
         $data['company_id'] = $companyId;
+        $data['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente');
+        $data['is_exento_iva'] = $request->boolean('is_exento_iva');
+        $data['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva');
 
         $customer = Customer::create($data);
         
@@ -104,21 +112,24 @@ class CustomerController extends Controller
         
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
-            'code' => 'nullable|string|max:50',
+            'code' => 'required|string|max:50|unique:customers,code,' . $id . ',id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
+            'business_name' => 'nullable|string|max:255',
+            'profile_type' => 'required|in:natural,juridical',
+            'contact_name' => 'nullable|string|max:255',
             'email1' => 'sometimes|required|email|max:255',
             'email2' => 'nullable|email|max:255',
             'email3' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
+            'phone' => 'required|string|max:50',
+            'address' => 'required|string',
             'credit_limit' => 'nullable|numeric|min:0',
             'credit_days' => 'nullable|integer|min:0',
             'active' => 'boolean',
             'customer_type_id' => 'nullable|exists:customer_types,id',
             'economic_activity_id' => 'nullable|string|size:5',
-            'depa_id' => 'nullable|string|max:10',
-            'municipality_id' => 'nullable|integer',
-            'district_id' => 'nullable|integer',
+            'depa_id' => 'required|string|max:10',
+            'municipality_id' => 'required|integer',
+            'district_id' => 'required|integer',
             'nit' => 'nullable|string|max:17',
             'nrc' => 'nullable|string',
             'dui' => 'nullable|string|max:10',
@@ -131,7 +142,12 @@ class CustomerController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $customer->update($validator->validated());
+        $validated = $validator->validated();
+        $validated['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente', $customer->is_gran_contribuyente);
+        $validated['is_exento_iva'] = $request->boolean('is_exento_iva', $customer->is_exento_iva);
+        $validated['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva', $customer->is_no_sujeto_iva);
+
+        $customer->update($validated);
         
         return response()->json($customer);
     }

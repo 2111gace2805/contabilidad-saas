@@ -1,0 +1,17 @@
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('00', 'Otro país');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('01', 'Ahuachapán');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('02', 'Santa Ana');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('03', 'Sonsonate');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('04', 'Chalatenango');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('05', 'La Libertad');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('06', 'San Salvador');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('07', 'Cuscatlán');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('08', 'La Paz');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('09', 'Cabañas');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('10', 'San Vicente');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('11', 'Usulután');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('12', 'San Miguel');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('13', 'Morazán');
+REPLACE INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('14', 'La Unión');
+REPLACE INTO contabilidad.municipios (munidepa_id, muni_id, muni_nombre, depa_id, muni_status, deleted_at) VALUES (1, '00', 'Otro País', '00', 'Active', null);
+REPLACE INTO contabilidad.municipios (munidepa_id, muni_id, muni_nombre, depa_id, muni_status, deleted_at) VALUES (2, '01', 'AHUACHAPÁN', '01', 'Inactive', null);

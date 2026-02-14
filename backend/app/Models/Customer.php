@@ -21,7 +21,11 @@ class Customer extends Model
     {
         return [
             'credit_limit' => 'decimal:2',
+            'credit_days' => 'integer',
             'active' => 'boolean',
+            'is_gran_contribuyente' => 'boolean',
+            'is_exento_iva' => 'boolean',
+            'is_no_sujeto_iva' => 'boolean',
         ];
     }
 
