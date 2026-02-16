@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { customers as customersApi, catalogs as catalogsApi } from '../../lib/api';
-import { Plus, Edit2, Trash2, Users as UsersIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users as UsersIcon, Search } from 'lucide-react';
 import { saveFormData, loadFormData, clearFormData, getFormKey } from '../../lib/formPersistence';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import type { Customer } from '../../types';
+import { EconomicActivityAutocomplete } from '../common/EconomicActivityAutocomplete';
 
 export function Customers() {
   const { selectedCompany } = useCompany();
@@ -17,7 +18,7 @@ export function Customers() {
     code: '',
     name: '',
     business_name: '',
-    profile_type: 'natural',
+    profile_type: 'juridical',
     contact_name: '',
     rfc: '',
     email1: '',
@@ -43,7 +44,17 @@ export function Customers() {
   const [municipalities, setMunicipalities] = useState<any[]>([]);
   const [districts, setDistricts] = useState<any[]>([]);
   const [customerTypes, setCustomerTypes] = useState<any[]>([]);
-  const [economicActivities, setEconomicActivities] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 100;
+  const isNatural = formData.profile_type === 'natural';
+  const nextCode = useMemo(() => {
+    const numericCodes = customers
+      .map((c) => parseInt(String(c.code || '').replace(/\D/g, ''), 10))
+      .filter((n) => Number.isFinite(n));
+    const max = numericCodes.length ? Math.max(...numericCodes) : 0;
+    return String(max + 1).padStart(6, '0');
+  }, [customers]);
 
   useEffect(() => {
     if (selectedCompany) {
@@ -68,12 +79,16 @@ export function Customers() {
     }
   }, [formData, showModal, selectedCompany, editingCustomer]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const resetForm = () => {
     setFormData({
-      code: '',
+      code: nextCode,
       name: '',
       business_name: '',
-      profile_type: 'natural',
+      profile_type: 'juridical',
       contact_name: '',
       rfc: '',
       email1: '',
@@ -106,6 +121,7 @@ export function Customers() {
       // El API devuelve { data: [...] }
       const customersList = Array.isArray(response) ? response : (response.data || []);
       setCustomers(customersList.filter((c: Customer) => c.active));
+      setCurrentPage(1);
     } catch (error) {
       console.error('Error loading customers:', error);
     } finally {
@@ -115,11 +131,6 @@ export function Customers() {
 
   const handleSave = async () => {
     if (!selectedCompany) return;
-
-    if (!formData.code.trim()) {
-      alert('El código es obligatorio');
-      return;
-    }
 
     if (!formData.name.trim()) {
       alert('El nombre es obligatorio');
@@ -148,6 +159,11 @@ export function Customers() {
 
     if (!formData.profile_type) {
       alert('Selecciona un tipo de perfil');
+      return;
+    }
+
+    if (!formData.customer_type_id) {
+      alert('Selecciona un tipo de cliente');
       return;
     }
 
@@ -200,10 +216,10 @@ export function Customers() {
       alert('Error al guardar: ' + (error as any).message);
     }
     setFormData({
-      code: '',
+      code: nextCode,
       name: '',
       business_name: '',
-      profile_type: 'natural',
+      profile_type: 'juridical',
       contact_name: '',
       rfc: '',
       email1: '',
@@ -235,8 +251,6 @@ export function Customers() {
         setDepartments(deps || []);
         const types = await catalogsApi.getCustomerTypes();
         setCustomerTypes(types || []);
-        const acts = await catalogsApi.getEconomicActivities();
-        setEconomicActivities(acts || []);
       } catch (err) {
         console.error('Error loading catalogs:', err);
       }
@@ -300,7 +314,7 @@ export function Customers() {
         code: customer.code || '',
         name: customer.name || '',
         business_name: customer.business_name || '',
-        profile_type: customer.profile_type || 'natural',
+        profile_type: customer.profile_type || 'juridical',
         contact_name: customer.contact_name || '',
         rfc: customer.rfc || '',
         email1: customer.email1 || customer.email || '',
@@ -325,6 +339,7 @@ export function Customers() {
     } else {
       setEditingCustomer(null);
       resetForm();
+      setFormData((prev) => ({ ...prev, code: nextCode }));
     }
     setShowModal(true);
   };
@@ -342,6 +357,39 @@ export function Customers() {
     }
   };
 
+  const filteredCustomers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return customers;
+
+    return customers.filter((customer) => {
+      const haystack = [
+        customer.code,
+        customer.name,
+        customer.business_name,
+        customer.nit,
+        customer.nrc,
+        customer.email1,
+        (customer as any).email,
+        customer.phone,
+      ]
+        .map((v) => String(v || '').toLowerCase());
+
+      return haystack.some((value) => value.includes(term));
+    });
+  }, [customers, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize));
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   if (!selectedCompany) {
     return (
       <div className="p-8">
@@ -351,6 +399,9 @@ export function Customers() {
       </div>
     );
   }
+
+  const startItem = filteredCustomers.length ? Math.min((currentPage - 1) * pageSize + 1, filteredCustomers.length) : 0;
+  const endItem = Math.min(currentPage * pageSize, filteredCustomers.length);
 
   return (
     <div className="p-8">
@@ -372,6 +423,29 @@ export function Customers() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+          <div className="text-sm text-slate-600">{filteredCustomers.length} clientes encontrados</div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por nombre, código, NIT, NRC..."
+                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+              />
+            </div>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -392,14 +466,14 @@ export function Customers() {
                     Cargando...
                   </td>
                 </tr>
-              ) : customers.length === 0 ? (
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-slate-600">
                     No hay clientes registrados
                   </td>
                 </tr>
               ) : (
-                customers.map((customer) => (
+                paginatedCustomers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-800">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -437,6 +511,28 @@ export function Customers() {
             </tbody>
           </table>
         </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 py-3 border-t border-slate-200">
+          <span className="text-sm text-slate-600">
+            Mostrando {startItem}-{endItem} de {filteredCustomers.length} clientes
+          </span>
+          <div className="flex gap-2">
+            <button
+              className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            >
+              Anterior
+            </button>
+            <button
+              className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={currentPage >= totalPages || filteredCustomers.length === 0}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       </div>
 
       {showModal && (
@@ -453,7 +549,15 @@ export function Customers() {
                 </label>
                 <select
                   value={formData.profile_type}
-                  onChange={(e) => setFormData({ ...formData, profile_type: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({
+                      ...formData,
+                      profile_type: value,
+                      business_name: value === 'natural' ? '' : formData.business_name,
+                      dui: value === 'natural' ? formData.dui : '',
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                 >
                   <option value="">Seleccione uno</option>
@@ -463,43 +567,53 @@ export function Customers() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de cliente <span className="text-red-500">*</span></label>
+                <select
+                  value={formData.customer_type_id}
+                  onChange={(e) => setFormData({ ...formData, customer_type_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="">Seleccione uno</option>
+                  {customerTypes.map((type) => (
+                    <option key={type.id || type.customer_type_id} value={type.id || type.customer_type_id}>
+                      {type.name || type.nombre || type.descripcion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nombre o razón social <span className="text-red-500">*</span>
+                  {isNatural ? 'Nombres y apellidos' : 'Nombre o razón social'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="Nombre o razón social"
+                  placeholder={isNatural ? 'Nombres y apellidos' : 'Nombre o razón social'}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre comercial (jurídica)</label>
-                <input
-                  type="text"
-                  value={formData.business_name}
-                  onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="Ej. Nombre comercial"
-                />
-              </div>
+              {!isNatural && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nombre comercial (jurídica)</label>
+                  <input
+                    type="text"
+                    value={formData.business_name}
+                    onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="Ej. Nombre comercial"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Actividad económica / Giro</label>
-                <select
+                <EconomicActivityAutocomplete
                   value={formData.economic_activity_id}
-                  onChange={(e) => setFormData({ ...formData, economic_activity_id: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="">Seleccione uno</option>
-                  {economicActivities.map((act) => (
-                    <option key={act.id || act.code} value={act.id || act.code}>
-                      {act.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setFormData({ ...formData, economic_activity_id: id })}
+                />
               </div>
 
               <div>
@@ -529,22 +643,25 @@ export function Customers() {
                 <input
                   type="text"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="CLI001"
+                  readOnly
+                  className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-600"
+                  placeholder={nextCode}
                 />
+                <p className="text-xs text-slate-500 mt-1">Se asigna automáticamente por empresa (000001, 000002, ...).</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">DUI</label>
-                <input
-                  type="text"
-                  value={formData.dui}
-                  onChange={(e) => setFormData({ ...formData, dui: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="00000000-0"
-                />
-              </div>
+              {isNatural && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">DUI</label>
+                  <input
+                    type="text"
+                    value={formData.dui}
+                    onChange={(e) => setFormData({ ...formData, dui: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="00000000-0"
+                  />
+                </div>
+              )}
 
               <div className="col-span-2 grid grid-cols-3 gap-4">
                 <div>

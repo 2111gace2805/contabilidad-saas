@@ -94,6 +94,9 @@ class DatabaseSeeder extends Seeder
 
         // Note: Super admin doesn't need company association - has access to all
 
+        // Load global catalogs (DTE/MH catalogs, departments, municipalities, activities)
+        $this->call(GlobalCatalogsSeeder::class);
+
         // Seed Account Types
         $this->seedAccountTypes($company);
 

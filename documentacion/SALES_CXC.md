@@ -20,6 +20,14 @@ Cumpliendo:
 - Arquitectura multiempresa
 - Preparación para Facturación Electrónica
 
+## Cambios recientes en UI/Flujo
+
+- Clientes: código se asigna automáticamente por empresa (secuencia 000001, 000002...). No se captura manualmente en el formulario.
+- Clientes: selección de cliente en facturación usa buscador tipo autocomplete (código/nombre/NIT) con navegación de teclado, mismo UX que búsqueda de cuentas contables.
+- Clientes: campo "Tipo de cliente" es obligatorio; perfil por defecto jurídica. Persona natural muestra "Nombres y apellidos" y DUI; jurídica muestra razón social y nombre comercial.
+- Clientes: búsqueda y paginación (100 por página) en la grilla de clientes.
+- Facturas de venta: número de factura se sugiere automáticamente con formato `F-YYYY-000001` por empresa/año y se muestra solo lectura en el modal.
+
 ---
 
 # 2. ESTRUCTURA GEOGRÁFICA

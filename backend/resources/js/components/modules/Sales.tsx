@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { invoices as invoicesApi, customers as customersApi } from '../../lib/api';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, FileText } from 'lucide-react';
 import type { Invoice, Customer } from '../../types';
+import { CustomerAutocomplete } from '../common/CustomerAutocomplete';
 
 export function Sales() {
   const { selectedCompany } = useCompany();
@@ -21,6 +22,18 @@ export function Sales() {
     total: '0',
     notes: '',
   });
+
+  const nextInvoiceNumber = useMemo(() => {
+    const year = new Date().getFullYear();
+    const numbers = invoices
+      .map((inv) => {
+        const match = String(inv.invoice_number || '').match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => Number.isFinite(n));
+    const max = numbers.length ? Math.max(...numbers) : 0;
+    return `F-${year}-${String(max + 1).padStart(6, '0')}`;
+  }, [invoices]);
 
   useEffect(() => {
     if (selectedCompany) {
@@ -94,7 +107,7 @@ export function Sales() {
 
       setShowModal(false);
       setEditing(null);
-      setFormData({ customer_id: '', invoice_number: '', invoice_date: new Date().toISOString().split('T')[0], due_date: '', subtotal: '0', tax: '0', total: '0', notes: '' });
+      setFormData({ customer_id: '', invoice_number: nextInvoiceNumber, invoice_date: new Date().toISOString().split('T')[0], due_date: '', subtotal: '0', tax: '0', total: '0', notes: '' });
       loadData();
       alert('Factura guardada exitosamente');
     } catch (error: any) {
@@ -152,7 +165,7 @@ export function Sales() {
         <button
           onClick={() => {
             setEditing(null);
-            setFormData({ customer_id: '', invoice_number: '', invoice_date: new Date().toISOString().split('T')[0], due_date: '', subtotal: '0', tax: '0', total: '0', notes: '' });
+            setFormData({ customer_id: '', invoice_number: nextInvoiceNumber, invoice_date: new Date().toISOString().split('T')[0], due_date: '', subtotal: '0', tax: '0', total: '0', notes: '' });
             setShowModal(true);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
@@ -226,18 +239,10 @@ export function Sales() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Cliente *</label>
-                  <select
-                    value={formData.customer_id}
-                    onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  >
-                    <option value="">Seleccionar cliente...</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.code} - {customer.name}
-                      </option>
-                    ))}
-                  </select>
+                  <CustomerAutocomplete
+                    value={formData.customer_id ? Number(formData.customer_id) : ''}
+                    onChange={(id) => setFormData({ ...formData, customer_id: id ? String(id) : '' })}
+                  />
                 </div>
 
                 <div>
@@ -245,10 +250,11 @@ export function Sales() {
                   <input
                     type="text"
                     value={formData.invoice_number}
-                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                    placeholder="F-001-0001"
+                    readOnly
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 rounded-lg text-slate-600"
+                    placeholder={nextInvoiceNumber}
                   />
+                  <p className="text-xs text-slate-500 mt-1">Correlativo sugerido por empresa y año: {nextInvoiceNumber}</p>
                 </div>
               </div>
 
