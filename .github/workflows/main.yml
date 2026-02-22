@@ -52,6 +52,7 @@ jobs:
           host: ${{ secrets.DEMO_HOST }}
           username: ${{ secrets.DEMO_USER }}
           key: ${{ secrets.DEMO_SSH_KEY }}
+          port: ${{ secrets.DEMO_PORT }}
           script: |
             sudo chown -R www-data:www-data /var/www/conta/backend/storage /var/www/conta/backend/bootstrap/cache
             sudo chmod -R 775 /var/www/conta/backend/storage /var/www/conta/backend/bootstrap/cache
