@@ -23,7 +23,7 @@ export function LoginForm() {
         await signIn(email, password);
       }
     } catch (err: any) {
-      setError(err.message || 'Error al autenticar');
+      setError(err.message || 'Error al autenticarse');
     } finally {
       setLoading(false);
     }
