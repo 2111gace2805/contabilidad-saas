@@ -34,6 +34,7 @@ class SetCompanyContext
                 }
                 
                 $request->attributes->set('company_id', $companyId);
+                $request->attributes->set('company', $company);
             }
         }
         

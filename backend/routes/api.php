@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\BankAccountController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\TodoController;
 use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\CompanyUserController;
 use App\Http\Controllers\Api\WarehouseController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\UnitOfMeasureController;
@@ -122,6 +123,17 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     
     // Clientes
     Route::apiResource('customers', CustomerController::class);
+
+    // Usuarios de la empresa
+    Route::apiResource('company-users', CompanyUserController::class);
+
+    // Catálogos operativos
+    Route::apiResource('document-types', DocumentTypeController::class);
+    Route::apiResource('payment-methods', PaymentMethodController::class);
+    Route::apiResource('warehouses', WarehouseController::class);
+    Route::apiResource('branches', BranchController::class);
+    Route::apiResource('units-of-measure', UnitOfMeasureController::class);
+    Route::apiResource('taxes', TaxController::class);
 
     // Catalogs for billing / CxC
     Route::get('catalogs/departments', [CatalogController::class, 'departments']);

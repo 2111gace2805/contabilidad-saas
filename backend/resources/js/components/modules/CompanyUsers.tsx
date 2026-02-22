@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Edit, Save, X, User as UserIcon, Shield, Mail } from 'lucide-react';
-import axios from 'axios';
+import { ApiClient } from '../../lib/api';
 import { useCompany } from '../../contexts/CompanyContext';
 
 interface User {
@@ -30,6 +30,9 @@ export default function CompanyUsers() {
 
     useEffect(() => {
         if (selectedCompany) {
+            // Ensure company header is set before requests
+            // @ts-ignore allow string ids
+            ApiClient.setCompanyId((selectedCompany as any).id);
             fetchUsers();
         }
     }, [selectedCompany]);
@@ -37,11 +40,19 @@ export default function CompanyUsers() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/company-users');
-            setUsers(response.data);
+            if (selectedCompany) {
+                // @ts-ignore allow string ids
+                ApiClient.setCompanyId((selectedCompany as any).id);
+            }
+            const response = await ApiClient.get<any[]>('/company-users');
+            const list = Array.isArray(response)
+                ? response
+                : ((response as any)?.data && Array.isArray((response as any).data) ? (response as any).data : []);
+            setUsers(list);
         } catch (err) {
             console.error("Error fetching users:", err);
             setError("No se pudieron cargar los usuarios.");
+            setUsers([]);
         } finally {
             setLoading(false);
         }
@@ -64,10 +75,10 @@ export default function CompanyUsers() {
     const handleDelete = async (id: number) => {
         if (!confirm('¿Estás seguro de eliminar este usuario de la empresa?')) return;
         try {
-            await axios.delete(`/api/company-users/${id}`);
+            await ApiClient.delete(`/company-users/${id}`);
             fetchUsers();
         } catch (err: any) {
-            alert(err.response?.data?.message || "Error al eliminar usuario");
+            alert(err?.message || "Error al eliminar usuario");
         }
     };
 
@@ -76,21 +87,21 @@ export default function CompanyUsers() {
         setError(null);
         try {
             if (editingUser) {
-                await axios.put(`/api/company-users/${editingUser.id}`, form);
+                await ApiClient.put(`/company-users/${editingUser.id}`, form);
             } else {
-                await axios.post('/api/company-users', form);
+                await ApiClient.post('/company-users', form);
             }
             setShowModal(false);
             fetchUsers();
         } catch (err: any) {
-            setError(err.response?.data?.message || "Error al guardar usuario");
+            setError(err?.message || (err?.response?.data?.message) || "Error al guardar usuario");
         }
     };
 
-    const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredUsers = Array.isArray(users) ? users.filter(u =>
+        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ) : [];
 
     return (
         <div className="p-6 max-w-6xl mx-auto">

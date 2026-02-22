@@ -3,7 +3,21 @@
 
 import type * as Types from '../types';
 
-const API_BASE = '/api';
+// Determina la base de la API:
+// 1) Usa VITE_API_URL si está definida en tiempo de build.
+// 2) Si se corre en Vite (puerto 5173), asume backend en 8000.
+// 3) Caso contrario, usa el mismo origen + /api.
+const runtimeBase = (import.meta.env.VITE_API_URL as string | undefined);
+const API_BASE = runtimeBase
+  ? runtimeBase
+  : window.location.port === '5173'
+    ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+    : `${window.location.origin}/api`;
+
+const buildUrl = (endpoint: string) => {
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  return `${base}${endpoint}`;
+};
 
 export interface ApiError {
   message: string;
@@ -53,7 +67,7 @@ export class ApiClient {
   }
 
   static async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildUrl(endpoint), {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -62,7 +76,7 @@ export class ApiClient {
   }
 
   static async post<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildUrl(endpoint), {
       method: 'POST',
       headers: this.getHeaders(),
       body: data ? JSON.stringify(data) : undefined,
@@ -72,7 +86,7 @@ export class ApiClient {
   }
 
   static async put<T>(endpoint: string, data: any): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildUrl(endpoint), {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
@@ -82,7 +96,7 @@ export class ApiClient {
   }
 
   static async patch<T>(endpoint: string, data: any): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildUrl(endpoint), {
       method: 'PATCH',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
@@ -92,7 +106,7 @@ export class ApiClient {
   }
 
   static async delete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(buildUrl(endpoint), {
       method: 'DELETE',
       headers: this.getHeaders(),
     });

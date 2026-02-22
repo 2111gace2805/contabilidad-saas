@@ -46,7 +46,8 @@
 - ✅ API Helper: `branches` en `api.ts`
 - ✅ Funcionalidades:
   - Listar sucursales
-  - Crear/editar sucursal
+  - Crear/editar sucursalThe POST method is not supported for route api/company-users. Supported methods: GET, HEAD.
+
   - Eliminar sucursal
   - Gestión de puntos de venta
 
