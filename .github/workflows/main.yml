@@ -48,10 +48,11 @@ jobs:
           host: ${{ secrets.DEMO_HOST }}
           username: ${{ secrets.DEMO_USER }}
           key: ${{ secrets.DEMO_SSH_KEY }}
+          port: ${{ secrets.DEMO_PORT }}
           source: |
             backend
           target: /var/www/conta
-          rm: true
+          rm: false
 
       - name: Fix permissions & run deploy script
         uses: appleboy/ssh-action@v1.0.3
