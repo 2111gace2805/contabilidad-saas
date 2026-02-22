@@ -17,6 +17,13 @@ jobs:
         with:
           php-version: "8.2"
           tools: composer:v2
+          
+      - name: Prepare Laravel folders
+        working-directory: backend
+        run: |
+          mkdir -p bootstrap/cache
+          mkdir -p storage/framework/{cache,sessions,views}
+          chmod -R 775 bootstrap/cache storage
 
       - name: Install backend dependencies
         working-directory: backend
