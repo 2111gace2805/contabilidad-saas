@@ -60,14 +60,6 @@ create table contabilidad.tipo_transmision
     engine = InnoDB
     collate = utf8mb4_general_ci;
 
-
-create table contabilidad.tipo_invalidacion
-(
-    id                       int auto_increment
-        primary key,
-    tipo_invalidacion_nombre varchar(150) null
-)
-    comment 'Tabla donde se guardan los tipos de invalidacion (Anulación) de DTE en MH' engine = InnoDB
 	
 	create table contabilidad.tipo_item
 (
@@ -182,22 +174,15 @@ create table contabilidad.paises
 create index pais_id
     on contabilidad.paises (pais_id);
 
-create table contabilidad.districts
+create table contabilidad.departamentos
 (
-    dist_id     bigint unsigned auto_increment
+    depa_id     varchar(255) not null
         primary key,
-    munidepa_id int                                          null comment 'id del municipio',
-    dist_name   varchar(191)                                 not null,
-    dist_status enum ('Active', 'Inactive') default 'Active' not null,
-    deleted_at  timestamp                                    null,
-    created_at  timestamp                                    null,
-    updated_at  timestamp                                    null,
-    constraint districts_munidepa_id_foreign
-        foreign key (munidepa_id) references contabilidad.municipios (munidepa_id)
-            on update cascade on delete cascade
+    depa_nombre varchar(255) not null
 )
-    comment 'ALIAS: dist' engine = InnoDB
-                          collate = utf8mb4_unicode_ci;
+    engine = InnoDB
+    collate = utf8mb4_general_ci;
+
 
 create table contabilidad.municipios
 (
@@ -220,14 +205,25 @@ create index depa_id
 create index muni_id
     on contabilidad.municipios (muni_id);
 	
-create table contabilidad.departamentos
+
+create table contabilidad.districts
 (
-    depa_id     varchar(255) not null
+    dist_id     bigint unsigned auto_increment
         primary key,
-    depa_nombre varchar(255) not null
+    munidepa_id int                                          null comment 'id del municipio',
+    dist_name   varchar(191)                                 not null,
+    dist_status enum ('Active', 'Inactive') default 'Active' not null,
+    deleted_at  timestamp                                    null,
+    created_at  timestamp                                    null,
+    updated_at  timestamp                                    null,
+    constraint districts_munidepa_id_foreign
+        foreign key (munidepa_id) references contabilidad.municipios (munidepa_id)
+            on update cascade on delete cascade
 )
-    engine = InnoDB
-    collate = utf8mb4_general_ci;
+    comment 'ALIAS: dist' engine = InnoDB
+                          collate = utf8mb4_unicode_ci;
+	
+
 
 INSERT INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('00', 'Otro país');
 INSERT INTO contabilidad.departamentos (depa_id, depa_nombre) VALUES ('01', 'Ahuachapán');
