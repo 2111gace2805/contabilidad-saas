@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Schema;
  */
 class GlobalCatalogsSqlOnlySeeder extends Seeder
 {
+    private bool $stopImport = false;
+
     public function run(): void
     {
         $path = $this->resolveSqlPath();
@@ -37,7 +39,25 @@ class GlobalCatalogsSqlOnlySeeder extends Seeder
         Schema::disableForeignKeyConstraints();
 
         foreach ($statements as $statement) {
-            if ($statement === '' || str_starts_with($statement, '##')) {
+            if ($this->stopImport) {
+                break;
+            }
+
+            if ($statement === '') {
+                continue;
+            }
+
+            // Remove inline SQL comment lines that may share a chunk with valid statements.
+            $statement = preg_replace('/^\s*##.*$/m', '', $statement);
+            $statement = trim($statement);
+
+            if ($statement === '') {
+                continue;
+            }
+
+            if ($this->shouldSkipStatement($statement)) {
+                $this->command?->warn('Stopping import at non-catalog section: ' . $this->statementLabel($statement));
+                $this->stopImport = true;
                 continue;
             }
 
@@ -46,8 +66,17 @@ class GlobalCatalogsSqlOnlySeeder extends Seeder
             } catch (\Throwable $e) {
                 $message = $e->getMessage();
 
-                // Ignore duplicate object creation errors so the import is idempotent.
-                if (str_contains($message, 'already exists')) {
+                // If a CREATE TABLE already exists, recreate it to enforce the expected schema.
+                if (str_contains($message, 'already exists') && $this->isCreateTableStatement($statement)) {
+                    $table = $this->extractCreateTableName($statement);
+
+                    if ($table) {
+                        DB::unprepared("DROP TABLE IF EXISTS {$table};");
+                        DB::unprepared($statement . ';');
+                        $this->command?->warn('Recreated existing table to match SQL schema: ' . $table);
+                        continue;
+                    }
+
                     $this->command?->warn('Skipping existing object for statement: ' . $this->statementLabel($statement));
                     continue;
                 }
@@ -92,7 +121,41 @@ class GlobalCatalogsSqlOnlySeeder extends Seeder
     {
         $normalized = preg_replace('/\s+/', ' ', trim($statement));
 
-        return mb_substr($normalized, 0, 80) . (strlen($normalized) > 80 ? '…' : '');
+        return mb_substr($normalized, 0, 80) . (strlen($normalized) > 80 ? '...' : '');
     }
 
+    private function isCreateTableStatement(string $statement): bool
+    {
+        return (bool) preg_match('/^\s*create\s+table\s+/i', $statement);
+    }
+
+    private function extractCreateTableName(string $statement): ?string
+    {
+        if (preg_match('/^\s*create\s+table\s+([`a-zA-Z0-9_.]+)\s*\(/i', $statement, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function shouldSkipStatement(string $statement): bool
+    {
+        // This seeder only imports global catalogs. The source SQL also includes
+        // application tables (e.g., contabilidad.customers) that must be ignored.
+        if (preg_match('/^\s*create\s+table\s+contabilidad\.customers\s*\(/i', $statement)) {
+            return true;
+        }
+
+        // Keep Laravel's normalized `districts` schema (id PK) and seed it from SQL values later.
+        if (preg_match('/^\s*create\s+table\s+contabilidad\.districts\s*\(/i', $statement)) {
+            return true;
+        }
+
+        if (preg_match('/^\s*insert\s+into\s+contabilidad\.districts\b/i', $statement)) {
+            return true;
+        }
+
+        return false;
+    }
 }
+

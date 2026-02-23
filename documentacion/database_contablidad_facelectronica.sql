@@ -2038,7 +2038,7 @@ INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_est
 INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_estado, tipodoc_codigo, version_json) VALUES ('09', 'Documento contable de liquidación', 'Inactivo', null, null);
 INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_estado, tipodoc_codigo, version_json) VALUES ('11', 'Facturas de exportación', 'Activo', 'FEXE', '1');
 INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_estado, tipodoc_codigo, version_json) VALUES ('14', 'Factura de sujeto excluido', 'Activo', 'FSE', '1');
-INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_estado, tipodoc_codigo, version_json) VALUES ('15', 'Comprobante de donación ', '', null, null);
+INSERT INTO contabilidad.tipo_documento (tipodoc_id, tipodoc_nombre, tipodoc_estado, tipodoc_codigo, version_json) VALUES ('15', 'Comprobante de donación ', 'Inactivo', null, null);
 INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (1, 'Error en la Información del Documento Tributario Electrónico a invalidar.');
 INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (2, 'Rescindir de la operación realizada.');
 INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (3, 'Otro');
@@ -2051,9 +2051,6 @@ INSERT INTO contabilidad.tipo_item (tipoitem_id, tipoitem_nombre) VALUES ('1', '
 INSERT INTO contabilidad.tipo_item (tipoitem_id, tipoitem_nombre) VALUES ('2', 'Servicios');
 INSERT INTO contabilidad.tipo_item (tipoitem_id, tipoitem_nombre) VALUES ('3', 'Ambos (Bienes y Servicios, incluye los dos inherente a los Productos o servicios)');
 INSERT INTO contabilidad.tipo_item (tipoitem_id, tipoitem_nombre) VALUES ('4', 'Otros tributos por ítem ');
-INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (1, 'Error en la Información del Documento Tributario Electrónico a invalidar.');
-INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (2, 'Rescindir de la operación realizada.');
-INSERT INTO contabilidad.tipo_invalidacion (id, tipo_invalidacion_nombre) VALUES (3, 'Otro');
 INSERT INTO contabilidad.tipo_transmision (tipotrans_id, tipotrans_nombre) VALUES ('1', 'Transmisión normal');
 INSERT INTO contabilidad.tipo_transmision (tipotrans_id, tipotrans_nombre) VALUES ('2', 'Transmisión por contingencia ');
 INSERT INTO contabilidad.unidades_medida (unim_id, unim_nombre) VALUES ('01', 'Metro');
