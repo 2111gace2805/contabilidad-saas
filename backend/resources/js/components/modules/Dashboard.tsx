@@ -194,7 +194,7 @@ export function Dashboard() {
             <div className="flex items-center justify-between py-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-slate-600" />
-                <span className="text-slate-700">Pólizas Contabilizadas</span>
+                <span className="text-slate-700">Partidas Contabilizadas</span>
               </div>
               <span className="font-bold text-slate-800">{stats.journal_entries_count}</span>
             </div>

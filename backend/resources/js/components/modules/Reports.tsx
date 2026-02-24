@@ -82,7 +82,8 @@ type ReportType =
   | 'balance-sheet'
   | 'income-statement'
   | 'purchase-book'
-  | 'sales-book'
+  | 'sales-book-consumer'
+  | 'sales-book-taxpayer'
   | 'cash-flow'
   | 'journal-book'
   | 'general-ledger'
@@ -658,7 +659,8 @@ export function Reports() {
       case 'purchase-book':
         loadPurchaseBook();
         break;
-      case 'sales-book':
+      case 'sales-book-consumer':
+      case 'sales-book-taxpayer':
         loadSalesBook();
         break;
       case 'cash-flow':
@@ -710,7 +712,8 @@ export function Reports() {
               </optgroup>
               <optgroup label="Libros Fiscales">
                 <option value="purchase-book">Libro de Compras (IVA)</option>
-                <option value="sales-book">Libro de Ventas (IVA)</option>
+                <option value="sales-book-consumer">Libro de Ventas Consumidor Final</option>
+                <option value="sales-book-taxpayer">Libro de Ventas Contribuyentes</option>
               </optgroup>
               <optgroup label="Libros Contables">
                 <option value="journal-book">Libro Diario</option>
@@ -1057,10 +1060,14 @@ export function Reports() {
         </div>
       )}
 
-      {reportType === 'sales-book' && salesBook.length > 0 && (
+      {(reportType === 'sales-book-consumer' || reportType === 'sales-book-taxpayer') && (
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-6 border-b border-slate-200">
-            <h3 className="text-xl font-bold text-slate-800">Libro de Ventas (IVA)</h3>
+            <h3 className="text-xl font-bold text-slate-800">
+              {reportType === 'sales-book-consumer'
+                ? 'Libro de Ventas Consumidor Final'
+                : 'Libro de Ventas Contribuyentes'}
+            </h3>
             <p className="text-sm text-slate-600">
               {selectedCompany.name} - Del {new Date(startDate).toLocaleDateString('es-MX')} al {new Date(endDate).toLocaleDateString('es-MX')}
             </p>
@@ -1079,7 +1086,13 @@ export function Reports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {salesBook.map((item, index) => (
+                {salesBook
+                  .filter((item) => {
+                    const taxId = (item.customer_tax_id || '').trim();
+                    const hasTaxId = taxId !== '' && taxId !== 'N/A' && taxId !== '-';
+                    return reportType === 'sales-book-taxpayer' ? hasTaxId : !hasTaxId;
+                  })
+                  .map((item, index) => (
                   <tr key={index}>
                     <td className="px-4 py-2 text-sm text-slate-800">
                       {new Date(item.invoice_date).toLocaleDateString('es-MX')}
@@ -1101,13 +1114,34 @@ export function Reports() {
                 <tr className="bg-slate-50 font-bold">
                   <td colSpan={4} className="px-4 py-3 text-sm text-slate-800">TOTALES</td>
                   <td className="px-4 py-3 text-sm text-right text-slate-800">
-                    ${salesBook.reduce((sum, item) => sum + item.subtotal, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    ${salesBook
+                      .filter((item) => {
+                        const taxId = (item.customer_tax_id || '').trim();
+                        const hasTaxId = taxId !== '' && taxId !== 'N/A' && taxId !== '-';
+                        return reportType === 'sales-book-taxpayer' ? hasTaxId : !hasTaxId;
+                      })
+                      .reduce((sum, item) => sum + item.subtotal, 0)
+                      .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-slate-800">
-                    ${salesBook.reduce((sum, item) => sum + item.tax_amount, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    ${salesBook
+                      .filter((item) => {
+                        const taxId = (item.customer_tax_id || '').trim();
+                        const hasTaxId = taxId !== '' && taxId !== 'N/A' && taxId !== '-';
+                        return reportType === 'sales-book-taxpayer' ? hasTaxId : !hasTaxId;
+                      })
+                      .reduce((sum, item) => sum + item.tax_amount, 0)
+                      .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-slate-800">
-                    ${salesBook.reduce((sum, item) => sum + item.total, 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    ${salesBook
+                      .filter((item) => {
+                        const taxId = (item.customer_tax_id || '').trim();
+                        const hasTaxId = taxId !== '' && taxId !== 'N/A' && taxId !== '-';
+                        return reportType === 'sales-book-taxpayer' ? hasTaxId : !hasTaxId;
+                      })
+                      .reduce((sum, item) => sum + item.total, 0)
+                      .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tbody>
@@ -1129,7 +1163,7 @@ export function Reports() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Fecha</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Póliza</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Partida</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Cuenta</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Descripción</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Entradas</th>
@@ -1191,7 +1225,7 @@ export function Reports() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Fecha</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Póliza</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Partida</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Cuenta</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Descripción</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Debe</th>
@@ -1252,7 +1286,7 @@ export function Reports() {
                     <thead className="bg-slate-100">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Fecha</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Póliza</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Partida</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-700">Descripción</th>
                         <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Debe</th>
                         <th className="px-4 py-2 text-right text-xs font-medium text-slate-700">Haber</th>
@@ -1315,7 +1349,7 @@ export function Reports() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Fecha</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Póliza</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Partida</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Descripción</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Debe</th>
                   <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Haber</th>

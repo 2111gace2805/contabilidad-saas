@@ -138,7 +138,7 @@ class JournalEntryController extends Controller
             return response()->json($entry, 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error al crear la póliza', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error al crear la partida', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -218,7 +218,7 @@ class JournalEntryController extends Controller
         $requestedStatus = strtoupper($request->status ?? $entry->status);
 
         if ($originalStatus === 'VOID' || $originalStatus === 'VOIDED') {
-            return response()->json(['message' => 'No se pueden modificar pólizas anuladas'], 400);
+            return response()->json(['message' => 'No se pueden modificar partidas anuladas'], 400);
         }
 
         if ($originalStatus === 'POSTED') {
@@ -231,10 +231,10 @@ class JournalEntryController extends Controller
 
             // Prevent reverting to draft if a type_number/entry_number was already assigned
             if ($requestedStatus === 'DRAFT' && ($entry->type_number || $entry->entry_number)) {
-                return response()->json(['message' => 'No se puede volver a borrador una póliza que ya tiene número asignado'], 400);
+                return response()->json(['message' => 'No se puede volver a borrador una partida que ya tiene número asignado'], 400);
             }
         } elseif ($originalStatus !== 'DRAFT') {
-            return response()->json(['message' => 'Solo se pueden actualizar pólizas en borrador o pólizas contabilizadas si el periodo está abierto'], 400);
+            return response()->json(['message' => 'Solo se pueden actualizar partidas en borrador o partidas contabilizadas si el periodo está abierto'], 400);
         }
 
         $validator = Validator::make($request->all(), [
@@ -305,7 +305,7 @@ class JournalEntryController extends Controller
             return response()->json($entry);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error al actualizar la póliza', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error al actualizar la partida', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -316,7 +316,7 @@ class JournalEntryController extends Controller
         $entry = JournalEntry::where('company_id', $companyId)->findOrFail($id);
         
         if (strtoupper($entry->status) !== 'DRAFT') {
-            return response()->json(['message' => 'Solo se pueden eliminar pólizas en borrador'], 400);
+            return response()->json(['message' => 'Solo se pueden eliminar partidas en borrador'], 400);
         }
 
         DB::beginTransaction();
@@ -326,10 +326,10 @@ class JournalEntryController extends Controller
             
             DB::commit();
             
-            return response()->json(['message' => 'Póliza eliminada exitosamente']);
+            return response()->json(['message' => 'Partida eliminada exitosamente']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error al eliminar la póliza', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error al eliminar la partida', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -339,7 +339,7 @@ class JournalEntryController extends Controller
         $entry = JournalEntry::where('company_id', $companyId)->findOrFail($id);
         
         if (strtoupper($entry->status) !== 'DRAFT') {
-            return response()->json(['message' => 'Solo se pueden contabilizar pólizas en borrador'], 400);
+            return response()->json(['message' => 'Solo se pueden contabilizar partidas en borrador'], 400);
         }
 
         // Verify period is open for the entry date
@@ -355,10 +355,10 @@ class JournalEntryController extends Controller
             DB::commit();
             
             $entry->load(['lines.account', 'creator']);
-            return response()->json(['message' => 'Póliza contabilizada exitosamente', 'entry' => $entry]);
+            return response()->json(['message' => 'Partida contabilizada exitosamente', 'entry' => $entry]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error al contabilizar la póliza', 'error' => $e->getMessage()], 400);
+            return response()->json(['message' => 'Error al contabilizar la partida', 'error' => $e->getMessage()], 400);
         }
     }
 
@@ -368,7 +368,7 @@ class JournalEntryController extends Controller
         $entry = JournalEntry::where('company_id', $companyId)->findOrFail($id);
 
         if (strtoupper($entry->status) !== 'POSTED') {
-            return response()->json(['message' => 'Solo se pueden anular pólizas contabilizadas'], 400);
+            return response()->json(['message' => 'Solo se pueden anular partidas contabilizadas'], 400);
         }
 
         $validator = Validator::make($request->all(), [
@@ -407,7 +407,7 @@ class JournalEntryController extends Controller
             'void_authorized_at' => now(),
         ]);
 
-        return response()->json(['message' => 'Póliza anulada exitosamente', 'entry' => $entry]);
+        return response()->json(['message' => 'Partida anulada exitosamente', 'entry' => $entry]);
     }
 
     public function pendingVoids(Request $request)

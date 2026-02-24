@@ -373,14 +373,14 @@ class DatabaseSeeder extends Seeder
     private function seedJournalEntryTypes(Company $company): void
     {
         $types = [
-            ['code' => 'PD', 'name' => 'Póliza de Diario', 'active' => true],
-            ['code' => 'PI', 'name' => 'Póliza de Ingreso', 'active' => true],
-            ['code' => 'PE', 'name' => 'Póliza de Egreso', 'active' => true],
-            ['code' => 'PA', 'name' => 'Póliza de Ajuste', 'active' => true],
-            ['code' => 'PB', 'name' => 'Póliza de Banco', 'active' => true],
-            ['code' => 'PC', 'name' => 'Póliza de Caja', 'active' => true],
-            ['code' => 'PCIERRE', 'name' => 'Póliza de Cierre', 'active' => true],
-            ['code' => 'PX', 'name' => 'Póliza de Exportación', 'active' => true],
+            ['code' => 'PD', 'name' => 'Partida de Diario', 'active' => true],
+            ['code' => 'PI', 'name' => 'Partida de Ingreso', 'active' => true],
+            ['code' => 'PE', 'name' => 'Partida de Egreso', 'active' => true],
+            ['code' => 'PA', 'name' => 'Partida de Ajuste', 'active' => true],
+            ['code' => 'PB', 'name' => 'Partida de Banco', 'active' => true],
+            ['code' => 'PC', 'name' => 'Partida de Caja', 'active' => true],
+            ['code' => 'PCIERRE', 'name' => 'Partida de Cierre', 'active' => true],
+            ['code' => 'PX', 'name' => 'Partida de Exportación', 'active' => true],
         ];
 
         foreach ($types as $type) {

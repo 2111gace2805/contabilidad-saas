@@ -215,7 +215,7 @@ export default function JournalEntryTypes() {
                                     type="text"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Ej: Poliza de Diario"
+                                    placeholder="Ej: Partida de Diario"
                                     className={`w-full px-4 py-2 bg-slate-50 border ${errors.name ? 'border-rose-200 ring-4 ring-rose-50' : 'border-slate-100'} rounded-lg focus:ring-2 focus:ring-slate-500 outline-none font-medium text-slate-700 transition-colors`}
                                 />
                                 {errors.name && <p className="text-sm text-rose-500 mt-2">{errors.name[0]}</p>}

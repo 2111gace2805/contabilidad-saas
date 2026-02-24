@@ -128,13 +128,13 @@ export function JournalEntries() {
   }, [filters]);
 
   const handlePost = async (entry: JournalEntry) => {
-    if (!confirm(`¿Contabilizar póliza? Se le asignará un correlativo permanente y no podrá ser cambiado el correlativo`)) return;
+    if (!confirm(`¿Contabilizar partida? Se le asignará un correlativo permanente y no podrá ser cambiado el correlativo`)) return;
 
     try {
       const full = await journalApi.getById(entry.id);
       const e = (full && ((full as any).data || full)) as JournalEntry;
       if (!(e.lines || []).length) {
-        alert('No es posible contabilizar: la póliza no tiene líneas.');
+        alert('No es posible contabilizar: la partida no tiene líneas.');
         return;
       }
 
@@ -148,7 +148,7 @@ export function JournalEntries() {
 
       await journalApi.post(entry.id);
       loadEntries();
-      alert('Póliza contabilizada exitosamente');
+      alert('Partida contabilizada exitosamente');
     } catch (error: any) {
       console.error('Error posting entry:', error);
       alert('Error al contabilizar: ' + (error?.message || 'Error desconocido'));
@@ -200,12 +200,12 @@ export function JournalEntries() {
   };
 
   const handleAuthorizeVoid = async (id: number) => {
-    if (!confirm('¿Autorizar la anulación definitiva de esta póliza?')) return;
+    if (!confirm('¿Autorizar la anulación definitiva de esta partida?')) return;
 
     try {
       await journalApi.authorizeVoid(id);
       loadEntries();
-      alert('Póliza anulada exitosamente.');
+      alert('Partida anulada exitosamente.');
     } catch (error: any) {
       console.error('Error authorizing void:', error);
       alert('Error al autorizar: ' + (error?.message || 'Error desconocido'));
@@ -245,14 +245,14 @@ export function JournalEntries() {
 
   const handleSave = async (asPosted: boolean = false) => {
     if (!formData.entry_date) {
-      alert('Ingrese fecha de la póliza');
+      alert('Ingrese fecha de la partida');
       return;
     }
 
     const nonBlankLines = (lines || []).filter(l => l.account_id || Number(l.debit) !== 0 || Number(l.credit) !== 0);
 
     if (nonBlankLines.length === 0) {
-      alert('La póliza debe tener al menos un movimiento contable.');
+      alert('La partida debe tener al menos un movimiento contable.');
       return;
     }
 
@@ -274,7 +274,7 @@ export function JournalEntries() {
 
     // If creating new and asking to post, ensure balanced
     if (!editing && asPosted && (Math.abs(totals.debit - totals.credit) >= 0.01 || totals.debit <= 0)) {
-      alert('No es posible contabilizar: la póliza debe estar cuadrada y con montos mayores a cero.');
+      alert('No es posible contabilizar: la partida debe estar cuadrada y con montos mayores a cero.');
       return;
     }
 
@@ -282,7 +282,7 @@ export function JournalEntries() {
     const isEditingPosted = editing && String(editing.status || '').toUpperCase() === 'POSTED';
     if (isEditingPosted) {
       if (Math.abs(totals.debit - totals.credit) >= 0.01 || totals.debit <= 0) {
-        alert('No se pueden guardar cambios: la póliza contabilizada debe estar cuadrada.');
+        alert('No se pueden guardar cambios: la partida contabilizada debe estar cuadrada.');
         return;
       }
     }
@@ -315,12 +315,12 @@ export function JournalEntries() {
       if (editing) {
         // If editing an entry that was posted, indicate changes saved
         if (String(editing.status || '').toUpperCase() === 'POSTED') {
-          alert('Cambios guardados en póliza contabilizada.');
+          alert('Cambios guardados en partida contabilizada.');
         } else {
           alert('Borrador guardado correctamente.');
         }
       } else {
-        alert(asPosted ? 'Póliza contabilizada exitosamente.' : 'Borrador guardado correctamente.');
+        alert(asPosted ? 'Partida contabilizada exitosamente.' : 'Borrador guardado correctamente.');
       }
     } catch (error: any) {
       console.error('Error saving:', error);
@@ -335,7 +335,7 @@ export function JournalEntries() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Libro Diario</h1>
           <p className="text-slate-600">
-            Gestión de pólizas contables y control de movimientos.
+            Gestión de partidas contables y control de movimientos.
           </p>
         </div>
 
@@ -357,13 +357,13 @@ export function JournalEntries() {
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Nueva Póliza
+          Nueva Partida
         </button>
       </div>
 
       {/* Grid / Table Section */}
       <Card
-        title="Pólizas Contables"
+        title="Partidas Contables"
         headerRight={
           <div className="flex gap-2">
             <input
@@ -462,8 +462,8 @@ export function JournalEntries() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">
                   {editing ? (
-                    editing.status.toUpperCase() === 'DRAFT' ? 'Editar Borrador' : 'Detalle de Póliza'
-                  ) : 'Nueva Póliza Contable'}
+                    editing.status.toUpperCase() === 'DRAFT' ? 'Editar Borrador' : 'Detalle de Partida'
+                  ) : 'Nueva Partida Contable'}
                 </h3>
                 {editing && (
                   <div className="mt-1 flex items-center gap-2">
@@ -737,7 +737,7 @@ export function JournalEntries() {
             <div className="p-6 space-y-4">
               <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
                 <p className="text-sm text-amber-800">
-                  Las pólizas contabilizadas son inmutables. Esta acción solicitará una anulación que debe ser aprobada por un administrador.
+                  Las partidas contabilizadas son inmutables. Esta acción solicitará una anulación que debe ser aprobada por un administrador.
                 </p>
               </div>
 

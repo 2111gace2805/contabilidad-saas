@@ -64,7 +64,7 @@ class JournalEntry extends Model
         static::updating(function ($journalEntry) {
             $original = strtoupper($journalEntry->getOriginal('status'));
             if ($original === 'VOID' || $original === 'VOIDED') {
-                throw new \Exception('No se puede modificar una póliza que ya ha sido anulada.');
+                throw new \Exception('No se puede modificar una partida que ya ha sido anulada.');
             }
             // NOTE: edits to POSTED entries are allowed when the fiscal period is open.
             // Business rules (period check, balancing, preventing revert to draft if
@@ -80,7 +80,7 @@ class JournalEntry extends Model
         });
 
         if (!$isInOpenPeriod) {
-            throw new \Exception('La fecha de la póliza no se encuentra dentro de un periodo abierto.');
+            throw new \Exception('La fecha de la partida no se encuentra dentro de un periodo abierto.');
         }
     }
 }

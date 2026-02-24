@@ -440,7 +440,7 @@ export function SuperAdminDashboard() {
                       </div>
                       <div>
                         <div className="text-2xl font-bold text-slate-800">{company.journal_entries_count || 0}</div>
-                        <div className="text-xs text-slate-500">Pólizas</div>
+                        <div className="text-xs text-slate-500">Partidas</div>
                       </div>
                     </div>
 
@@ -489,7 +489,7 @@ export function SuperAdminDashboard() {
                 <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Admin</span>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                Dueño o Contador Jefe de la empresa. Tiene control total sobre el catálogo de cuentas, períodos contables y configuraciones del sistema. Es el único autorizado para validar y aprobar la anulación de pólizas contabilizadas.
+                Dueño o Contador Jefe de la empresa. Tiene control total sobre el catálogo de cuentas, períodos contables y configuraciones del sistema. Es el único autorizado para validar y aprobar la anulación de partidas contabilizadas.
               </p>
             </div>
 
@@ -498,7 +498,7 @@ export function SuperAdminDashboard() {
                 <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Contador</span>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                Personal operativo con acceso a todos los módulos: Pólizas, Clientes, Proveedores, Bancos e Inventarios. Puede registrar movimientos y generar reportes, pero no tiene permisos para modificar la estructura contable ni los settings de la empresa.
+                Personal operativo con acceso a todos los módulos: Partidas, Clientes, Proveedores, Bancos e Inventarios. Puede registrar movimientos y generar reportes, pero no tiene permisos para modificar la estructura contable ni los settings de la empresa.
               </p>
             </div>
 

@@ -92,7 +92,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
         title: 'Contabilidad',
         items: [
           { id: 'catalog', label: 'Catálogo Contable', icon: BookOpen },
-          { id: 'journal', label: 'Pólizas/Asientos', icon: FileText },
+          { id: 'journal', label: 'Partidas/Asientos', icon: FileText },
           { id: 'journal-types', label: 'Tipos de Partida', icon: Tag },
           { id: 'reports', label: 'Reportes', icon: BarChart3 },
         ]

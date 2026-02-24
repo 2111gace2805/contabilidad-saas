@@ -112,7 +112,7 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     
     // === TRANSACCIONES CONTABLES ===
     
-    // Pólizas/Asientos contables
+    // Partidas/Asientos contables
     Route::get('journal-entries/pending-voids', [JournalEntryController::class, 'pendingVoids']);
     Route::apiResource('journal-entries', JournalEntryController::class);
     Route::post('journal-entries/{entry}/post', [JournalEntryController::class, 'post']);
