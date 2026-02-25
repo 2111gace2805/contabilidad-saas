@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
-import { companyPreferences } from '../../lib/api';
+import { catalogs, companies, companyPreferences } from '../../lib/api';
 
-type SignerTab = 'cert' | 'smtp';
+type SignerTab = 'general' | 'cert' | 'smtp';
 
 interface FormState {
+  company_name: string;
+  company_nit: string;
+  company_nrc: string;
+  company_phone: string;
+  company_address: string;
   primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
   dte_establishment_code: string;
   dte_point_of_sale_code: string;
+  emisor_nombre_comercial: string;
+  emisor_tipo_establecimiento: string;
+  emisor_correo: string;
+  emisor_cod_actividad: string;
+  emisor_desc_actividad: string;
+  emisor_departamento: string;
+  emisor_municipio: string;
+  emisor_direccion_complemento: string;
+  emisor_cod_estable: string;
+  emisor_cod_punto_venta: string;
   firmador_certificate_name: string;
   firmador_certificate_content: string;
   firmador_private_key_name: string;
@@ -26,9 +41,24 @@ interface FormState {
 }
 
 const defaultForm = (): FormState => ({
+  company_name: '',
+  company_nit: '',
+  company_nrc: '',
+  company_phone: '',
+  company_address: '',
   primary_color: 'slate',
   dte_establishment_code: 'M001',
   dte_point_of_sale_code: 'P001',
+  emisor_nombre_comercial: '',
+  emisor_tipo_establecimiento: '02',
+  emisor_correo: '',
+  emisor_cod_actividad: '',
+  emisor_desc_actividad: '',
+  emisor_departamento: '',
+  emisor_municipio: '',
+  emisor_direccion_complemento: '',
+  emisor_cod_estable: 'M001',
+  emisor_cod_punto_venta: 'P001',
   firmador_certificate_name: '',
   firmador_certificate_content: '',
   firmador_private_key_name: '',
@@ -55,11 +85,14 @@ const providerDefaults: Record<FormState['smtp_provider'], Partial<FormState>> =
 };
 
 export function ElectronicSignerSettings() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, refreshCompanies } = useCompany();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<SignerTab>('cert');
+  const [activeTab, setActiveTab] = useState<SignerTab>('general');
   const [form, setForm] = useState<FormState>(defaultForm);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [municipalities, setMunicipalities] = useState<Array<{ id: number; name: string }>>([]);
+  const [economicActivities, setEconomicActivities] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     if (selectedCompany) {
@@ -73,10 +106,42 @@ export function ElectronicSignerSettings() {
     setLoading(true);
     try {
       const data = await companyPreferences.get();
+      const [departmentsData, activitiesData] = await Promise.all([
+        catalogs.getDepartments(),
+        catalogs.getEconomicActivities(),
+      ]);
+
+      setDepartments(departmentsData || []);
+      setEconomicActivities((activitiesData || []).map((item: any) => ({ id: String(item.id), name: String(item.name) })));
+
+      const selectedActivity = (activitiesData || []).find((item: any) => String(item.id) === String(data.emisor_cod_actividad || ''));
+
+      const depaId = String(data.emisor_departamento || '');
+      let municipalitiesData: any[] = [];
+      if (depaId) {
+        municipalitiesData = await catalogs.getMunicipalities({ depa_id: depaId });
+      }
+      setMunicipalities((municipalitiesData || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
+
       setForm({
+        company_name: selectedCompany?.name || '',
+        company_nit: selectedCompany?.nit || selectedCompany?.rfc || '',
+        company_nrc: (selectedCompany as any)?.nrc || '',
+        company_phone: selectedCompany?.phone || '',
+        company_address: selectedCompany?.address || '',
         primary_color: data.primary_color || 'slate',
         dte_establishment_code: data.dte_establishment_code || 'M001',
         dte_point_of_sale_code: data.dte_point_of_sale_code || 'P001',
+        emisor_nombre_comercial: data.emisor_nombre_comercial || selectedCompany?.name || '',
+        emisor_tipo_establecimiento: data.emisor_tipo_establecimiento || '02',
+        emisor_correo: data.emisor_correo || '',
+        emisor_cod_actividad: data.emisor_cod_actividad || '',
+        emisor_desc_actividad: data.emisor_desc_actividad || selectedActivity?.name || '',
+        emisor_departamento: depaId,
+        emisor_municipio: String(data.emisor_municipio || ''),
+        emisor_direccion_complemento: data.emisor_direccion_complemento || selectedCompany?.address || '',
+        emisor_cod_estable: data.emisor_cod_estable || data.dte_establishment_code || 'M001',
+        emisor_cod_punto_venta: data.emisor_cod_punto_venta || data.dte_point_of_sale_code || 'P001',
         firmador_certificate_name: data.firmador_certificate_name || '',
         firmador_certificate_content: data.firmador_certificate_content || '',
         firmador_private_key_name: data.firmador_private_key_name || '',
@@ -165,10 +230,33 @@ export function ElectronicSignerSettings() {
 
     setSaving(true);
     try {
+      if (selectedCompany?.id) {
+        await companies.update(Number(selectedCompany.id), {
+          name: form.company_name || selectedCompany.name,
+          nit: form.company_nit || null,
+          rfc: form.company_nit || null,
+          nrc: form.company_nrc || null,
+          phone: form.company_phone || null,
+          address: form.company_address || null,
+        } as any);
+
+        await refreshCompanies();
+      }
+
       await companyPreferences.update({
         primary_color: form.primary_color,
         dte_establishment_code: form.dte_establishment_code || 'M001',
         dte_point_of_sale_code: form.dte_point_of_sale_code || 'P001',
+        emisor_nombre_comercial: form.emisor_nombre_comercial || null,
+        emisor_tipo_establecimiento: form.emisor_tipo_establecimiento || null,
+        emisor_correo: form.emisor_correo || null,
+        emisor_cod_actividad: form.emisor_cod_actividad || null,
+        emisor_desc_actividad: form.emisor_desc_actividad || null,
+        emisor_departamento: form.emisor_departamento || null,
+        emisor_municipio: form.emisor_municipio || null,
+        emisor_direccion_complemento: form.emisor_direccion_complemento || null,
+        emisor_cod_estable: form.emisor_cod_estable || form.dte_establishment_code || null,
+        emisor_cod_punto_venta: form.emisor_cod_punto_venta || form.dte_point_of_sale_code || null,
         firmador_certificate_name: form.firmador_certificate_name || null,
         firmador_certificate_content: form.firmador_certificate_content || null,
         firmador_private_key_name: form.firmador_private_key_name || null,
@@ -219,6 +307,12 @@ export function ElectronicSignerSettings() {
       <div className="border border-slate-200 rounded-lg">
         <div className="border-b border-slate-200 p-2 flex gap-2">
           <button
+            className={`px-4 py-2 text-sm rounded-lg ${activeTab === 'general' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}
+            onClick={() => setActiveTab('general')}
+          >
+            Datos Generales
+          </button>
+          <button
             className={`px-4 py-2 text-sm rounded-lg ${activeTab === 'cert' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}
             onClick={() => setActiveTab('cert')}
           >
@@ -233,7 +327,192 @@ export function ElectronicSignerSettings() {
         </div>
 
         <div className="p-6 space-y-4">
-          {activeTab === 'cert' ? (
+          {activeTab === 'general' ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nombre (Emisor)</label>
+                  <input
+                    type="text"
+                    value={form.company_name}
+                    onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">NIT</label>
+                  <input
+                    type="text"
+                    value={form.company_nit}
+                    onChange={(e) => setForm({ ...form, company_nit: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">NRC</label>
+                  <input
+                    type="text"
+                    value={form.company_nrc}
+                    onChange={(e) => setForm({ ...form, company_nrc: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                  <input
+                    type="text"
+                    value={form.company_phone}
+                    onChange={(e) => setForm({ ...form, company_phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Correo DTE</label>
+                  <input
+                    type="email"
+                    value={form.emisor_correo}
+                    onChange={(e) => setForm({ ...form, emisor_correo: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Cod. Actividad</label>
+                  <select
+                    value={form.emisor_cod_actividad}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selected = economicActivities.find((item) => item.id === code);
+                      setForm({ ...form, emisor_cod_actividad: code, emisor_desc_actividad: selected?.name || '' });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {economicActivities.map((activity) => (
+                      <option key={activity.id} value={activity.id}>{activity.id}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Desc. Actividad</label>
+                  <input
+                    type="text"
+                    value={form.emisor_desc_actividad}
+                    onChange={(e) => setForm({ ...form, emisor_desc_actividad: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
+                  <select
+                    value={form.emisor_departamento}
+                    onChange={async (e) => {
+                      const depa = e.target.value;
+                      const muni = depa ? await catalogs.getMunicipalities({ depa_id: depa }) : [];
+                      setMunicipalities((muni || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
+                      setForm({ ...form, emisor_departamento: depa, emisor_municipio: '' });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {departments.map((dep) => (
+                      <option key={dep.id} value={dep.id}>{dep.id} - {dep.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Municipio</label>
+                  <select
+                    value={form.emisor_municipio}
+                    onChange={(e) => setForm({ ...form, emisor_municipio: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {municipalities.map((mun) => (
+                      <option key={mun.id} value={String(mun.id)}>{mun.id} - {mun.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tipo Establecimiento</label>
+                  <input
+                    type="text"
+                    value={form.emisor_tipo_establecimiento}
+                    onChange={(e) => setForm({ ...form, emisor_tipo_establecimiento: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="02"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Dirección complemento</label>
+                <textarea
+                  value={form.emisor_direccion_complemento}
+                  onChange={(e) => setForm({ ...form, emisor_direccion_complemento: e.target.value, company_address: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">CodEstableMH</label>
+                  <input
+                    type="text"
+                    value={form.dte_establishment_code}
+                    onChange={(e) => {
+                      const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                      setForm({ ...form, dte_establishment_code: next, emisor_cod_estable: next || form.emisor_cod_estable });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="M001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">CodEstable</label>
+                  <input
+                    type="text"
+                    value={form.emisor_cod_estable}
+                    onChange={(e) => setForm({ ...form, emisor_cod_estable: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="M001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">CodPuntoVentaMH</label>
+                  <input
+                    type="text"
+                    value={form.dte_point_of_sale_code}
+                    onChange={(e) => {
+                      const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                      setForm({ ...form, dte_point_of_sale_code: next, emisor_cod_punto_venta: next || form.emisor_cod_punto_venta });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="P001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">CodPuntoVenta</label>
+                  <input
+                    type="text"
+                    value={form.emisor_cod_punto_venta}
+                    onChange={(e) => setForm({ ...form, emisor_cod_punto_venta: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="P001"
+                  />
+                </div>
+              </div>
+            </>
+          ) : activeTab === 'cert' ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

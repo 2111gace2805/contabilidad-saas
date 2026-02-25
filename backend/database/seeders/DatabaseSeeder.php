@@ -9,6 +9,7 @@ use App\Models\AccountType;
 use App\Models\BankAccount;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\CompanyPreference;
 use App\Models\Customer;
 use App\Models\DocumentType;
 use App\Models\JournalEntryType;
@@ -88,6 +89,25 @@ class DatabaseSeeder extends Seeder
         \DB::table('company_users')->updateOrInsert(
             ['company_id' => $company->id, 'user_id' => $user->id],
             ['role' => 'admin', 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        CompanyPreference::updateOrCreate(
+            ['company_id' => $company->id],
+            [
+                'primary_color' => 'slate',
+                'dte_establishment_code' => 'M001',
+                'dte_point_of_sale_code' => 'P001',
+                'emisor_nombre_comercial' => $company->name,
+                'emisor_tipo_establecimiento' => '02',
+                'emisor_correo' => 'dte@empresa-demo.local',
+                'emisor_cod_actividad' => '62010',
+                'emisor_desc_actividad' => 'PROGRAMACIÓN INFORMÁTICA',
+                'emisor_departamento' => '06',
+                'emisor_municipio' => '14',
+                'emisor_direccion_complemento' => $company->address,
+                'emisor_cod_estable' => 'M001',
+                'emisor_cod_punto_venta' => 'P001',
+            ]
         );
 
         \DB::table('company_users')->updateOrInsert(

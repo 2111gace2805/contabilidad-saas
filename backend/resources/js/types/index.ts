@@ -16,6 +16,7 @@ export interface Company {
   name: string;
   nit: string | null;
   rfc?: string | null;
+  nrc?: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
@@ -354,6 +355,16 @@ export interface CompanyPreference {
   primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
   dte_establishment_code?: string | null;
   dte_point_of_sale_code?: string | null;
+  emisor_nombre_comercial?: string | null;
+  emisor_tipo_establecimiento?: string | null;
+  emisor_correo?: string | null;
+  emisor_cod_actividad?: string | null;
+  emisor_desc_actividad?: string | null;
+  emisor_departamento?: string | null;
+  emisor_municipio?: string | null;
+  emisor_direccion_complemento?: string | null;
+  emisor_cod_estable?: string | null;
+  emisor_cod_punto_venta?: string | null;
   firmador_certificate_name?: string | null;
   firmador_certificate_content?: string | null;
   firmador_private_key_name?: string | null;

@@ -63,3 +63,12 @@ Para corregir una póliza contabilizada, se debe seguir el flujo de anulación b
 - **Facturación ventas:** autocompletado de ítems/productos ahora usa búsqueda backend (`/inventory-items?search=...`) y no depende solo del primer bloque paginado.
 - **Inventario/Ítems:** se formaliza `item_type` con catálogo cerrado (`bien`, `servicio`, `ambos`) en backend y frontend.
 - **Tipos de cuenta (Administración):** UI corregida en español y flujo completo de creación/edición/eliminación desde modal.
+
+## 8. Dashboard y Datos Generales de Emisor
+- **Dashboard (`/api/dashboard`)** devuelve métricas en formato plano compatible con frontend:
+	- `receivables`, `payables`, `inventory_value`, `journal_entries_count`, `pending_voids_count`.
+	- `total_assets`, `total_liabilities`, `equity`, `revenue`, `expenses`, `net_income`.
+- **CxP/CxC** se calculan por saldo (`balance`) en estados operativos (`pending`, `partial`, `overdue`, etc.), no solo por un estado único.
+- **Configuración de Empresa (Emisor DTE)** se amplió en `company_preferences` con campos para:
+	- actividad económica (código/descripcion), dirección por códigos de catálogo (departamento/municipio), nombre comercial,
+	- tipo de establecimiento, correo DTE, y códigos `codEstable`/`codPuntoVenta` además de `codEstableMH`/`codPuntoVentaMH`.

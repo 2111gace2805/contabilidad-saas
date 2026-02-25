@@ -100,5 +100,12 @@ Las partidas utilizan tres identificadores para su control y visualización:
 	- Flujo de `Nuevo Tipo`, edición y eliminación funcional.
 	- Naturaleza mostrada como `Deudora`/`Acreedora`.
 
+- **Dashboard**
+	- Se estandarizó la respuesta de `/api/dashboard` al formato esperado por frontend.
+	- CxP/CxC ahora reflejan saldos pendientes reales por estados operativos, evitando valores en cero cuando existen documentos.
+
+- **Configuración → Datos Generales (Emisor)**
+	- Se agregó captura completa para datos del emisor DTE: actividad económica, dirección por catálogo (departamento/municipio), nombre comercial, tipo de establecimiento, correo DTE y códigos de establecimiento/punto de venta.
+
 ---
 *Última actualización: Febrero 2026*

@@ -29,6 +29,9 @@ class CompanyPreferenceController extends Controller
                 'primary_color' => 'slate',
                 'dte_establishment_code' => 'M001',
                 'dte_point_of_sale_code' => 'P001',
+                'emisor_tipo_establecimiento' => '02',
+                'emisor_cod_estable' => 'M001',
+                'emisor_cod_punto_venta' => 'P001',
             ]
         );
 
@@ -47,6 +50,16 @@ class CompanyPreferenceController extends Controller
             'primary_color' => 'required|string|in:slate,blue,emerald,indigo,rose,amber',
             'dte_establishment_code' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
             'dte_point_of_sale_code' => ['nullable', 'regex:/^[Pp][0-9]{3}$/'],
+            'emisor_nombre_comercial' => 'nullable|string|max:255',
+            'emisor_tipo_establecimiento' => 'nullable|string|max:10',
+            'emisor_correo' => 'nullable|email|max:255',
+            'emisor_cod_actividad' => 'nullable|string|max:10',
+            'emisor_desc_actividad' => 'nullable|string|max:255',
+            'emisor_departamento' => 'nullable|string|max:10',
+            'emisor_municipio' => 'nullable|string|max:10',
+            'emisor_direccion_complemento' => 'nullable|string',
+            'emisor_cod_estable' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
+            'emisor_cod_punto_venta' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
             'firmador_certificate_name' => 'nullable|string|max:255',
             'firmador_certificate_content' => 'nullable|string',
             'firmador_private_key_name' => 'nullable|string|max:255',
@@ -74,6 +87,12 @@ class CompanyPreferenceController extends Controller
         }
         if (isset($validated['dte_point_of_sale_code'])) {
             $validated['dte_point_of_sale_code'] = strtoupper($validated['dte_point_of_sale_code']);
+        }
+        if (isset($validated['emisor_cod_estable'])) {
+            $validated['emisor_cod_estable'] = strtoupper($validated['emisor_cod_estable']);
+        }
+        if (isset($validated['emisor_cod_punto_venta'])) {
+            $validated['emisor_cod_punto_venta'] = strtoupper($validated['emisor_cod_punto_venta']);
         }
 
         $preference = CompanyPreference::updateOrCreate(
