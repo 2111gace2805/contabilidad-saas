@@ -9,7 +9,7 @@ import type { Supplier } from '../../types';
 type SupplierFormData = {
   code: string;
   name: string;
-  rfc: string;
+  nit: string;
   email: string;
   phone: string;
   address: string;
@@ -26,7 +26,7 @@ export function Suppliers() {
   const [formData, setFormData] = useState<SupplierFormData>({
     code: '',
     name: '',
-    rfc: '',
+    nit: '',
     email: '',
     phone: '',
     address: '',
@@ -77,7 +77,7 @@ export function Suppliers() {
       const supplierData = {
         code: formData.code,
         name: formData.name,
-        rfc: formData.rfc || undefined,
+        nit: formData.nit || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
@@ -96,7 +96,7 @@ export function Suppliers() {
 
       setShowModal(false);
       setEditingSupplier(null);
-      setFormData({ code: '', name: '', rfc: '', email: '', phone: '', address: '', credit_days: 30 });
+      setFormData({ code: '', name: '', nit: '', email: '', phone: '', address: '', credit_days: 30 });
       loadSuppliers();
     } catch (error: any) {
       console.error('Error saving supplier:', error);
@@ -111,7 +111,7 @@ export function Suppliers() {
     }
     setShowModal(false);
     setEditingSupplier(null);
-    setFormData({ code: '', name: '', rfc: '', email: '', phone: '', address: '', credit_days: 30 });
+    setFormData({ code: '', name: '', nit: '', email: '', phone: '', address: '', credit_days: 30 });
   };
 
   const openModal = (supplier?: Supplier) => {
@@ -120,7 +120,7 @@ export function Suppliers() {
       setFormData({
         code: supplier.code,
         name: supplier.name,
-        rfc: supplier.rfc || '',
+        nit: supplier.nit || '',
         email: supplier.email || '',
         phone: supplier.phone || '',
         address: supplier.address || '',
@@ -128,7 +128,7 @@ export function Suppliers() {
       });
     } else {
       setEditingSupplier(null);
-      setFormData({ code: '', name: '', rfc: '', email: '', phone: '', address: '', credit_days: 30 });
+      setFormData({ code: '', name: '', nit: '', email: '', phone: '', address: '', credit_days: 30 });
     }
     setShowModal(true);
   };
@@ -178,7 +178,7 @@ export function Suppliers() {
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Código</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Nombre</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">RFC</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">NIT</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Email</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Días Crédito</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Estado</th>
@@ -203,7 +203,7 @@ export function Suppliers() {
                   <tr key={supplier.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-800">{supplier.code}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{supplier.name}</td>
-                    <td className="px-4 py-3 text-sm text-slate-800">{supplier.rfc || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800">{supplier.nit || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{supplier.email || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{supplier.credit_days} días</td>
                     <td className="px-4 py-3">
@@ -262,11 +262,11 @@ export function Suppliers() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">RFC</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">NIT</label>
                   <input
                     type="text"
-                    value={formData.rfc}
-                    onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
+                    value={formData.nit}
+                    onChange={(e) => setFormData({ ...formData, nit: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                     placeholder="Ej: ABC123456XYZ"
                   />

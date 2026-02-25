@@ -151,6 +151,7 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     // Cuentas por pagar
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('bills', BillController::class);
+    Route::post('bills/{id}/pay', [BillController::class, 'pay']);
 
     // Bancos
     Route::apiResource('bank-accounts', BankAccountController::class);

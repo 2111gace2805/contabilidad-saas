@@ -29,7 +29,7 @@ class SupplierController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('rfc', 'like', "%{$search}%")
+                  ->orWhere('nit', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -51,6 +51,7 @@ class SupplierController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
+            'nit' => 'nullable|string|max:50',
             'rfc' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
@@ -64,6 +65,10 @@ class SupplierController extends Controller
         }
 
         $data = $validator->validated();
+        if (!isset($data['nit']) && isset($data['rfc'])) {
+            $data['nit'] = $data['rfc'];
+        }
+        unset($data['rfc']);
         $data['company_id'] = $companyId;
 
         $supplier = Supplier::create($data);
@@ -91,6 +96,7 @@ class SupplierController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
             'code' => 'nullable|string|max:50',
+            'nit' => 'nullable|string|max:50',
             'rfc' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
@@ -103,7 +109,13 @@ class SupplierController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $supplier->update($validator->validated());
+        $data = $validator->validated();
+        if (!isset($data['nit']) && isset($data['rfc'])) {
+            $data['nit'] = $data['rfc'];
+        }
+        unset($data['rfc']);
+
+        $supplier->update($data);
         
         return response()->json($supplier);
     }

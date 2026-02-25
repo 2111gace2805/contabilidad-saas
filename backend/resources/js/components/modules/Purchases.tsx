@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
-import { bills as billsApi, suppliers as suppliersApi } from '../../lib/api';
+import { bankAccounts as bankAccountsApi, bills as billsApi, suppliers as suppliersApi } from '../../lib/api';
 import { Plus, Save, X, Upload, Trash2, Edit2 } from 'lucide-react';
-import type { Bill, Supplier } from '../../types';
+import type { BankAccount, Bill, Supplier } from '../../types';
 import { SupplierAutocomplete } from '../common/SupplierAutocomplete';
 
 interface BillFormData {
@@ -24,6 +24,9 @@ interface BillFormData {
   dte_firma_electronica: string;
   supplier_name_snapshot: string;
   supplier_tax_id_snapshot: string;
+  supplier_phone_snapshot: string;
+  supplier_email_snapshot: string;
+  supplier_address_snapshot: string;
   dte_emisor: any | null;
   dte_receptor: any | null;
   dte_cuerpo_documento: any[];
@@ -52,6 +55,9 @@ const emptyForm = (): BillFormData => ({
   dte_firma_electronica: '',
   supplier_name_snapshot: '',
   supplier_tax_id_snapshot: '',
+  supplier_phone_snapshot: '',
+  supplier_email_snapshot: '',
+  supplier_address_snapshot: '',
   dte_emisor: null,
   dte_receptor: null,
   dte_cuerpo_documento: [],
@@ -65,11 +71,21 @@ export function Purchases() {
   const { selectedCompany } = useCompany();
   const [bills, setBills] = useState<Bill[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [formData, setFormData] = useState<BillFormData>(emptyForm);
   const [importedFromJson, setImportedFromJson] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [billToPay, setBillToPay] = useState<Bill | null>(null);
+  const [paymentData, setPaymentData] = useState({
+    bank_account_id: '',
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    reference: '',
+    notes: '',
+  });
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -83,9 +99,10 @@ export function Purchases() {
 
     setLoading(true);
     try {
-      const [billsResponse, suppliersResponse] = await Promise.all([
+      const [billsResponse, suppliersResponse, bankAccountsResponse] = await Promise.all([
         billsApi.getAll(),
         suppliersApi.getAll({ per_page: 500 }),
+        bankAccountsApi.getAll(),
       ]);
 
       const billsList = Array.isArray(billsResponse)
@@ -104,8 +121,17 @@ export function Purchases() {
             ? (suppliersResponse as any).data.data
             : [];
 
+          const banksList = Array.isArray(bankAccountsResponse)
+            ? bankAccountsResponse
+            : Array.isArray((bankAccountsResponse as any)?.data)
+              ? (bankAccountsResponse as any).data
+              : Array.isArray((bankAccountsResponse as any)?.data?.data)
+            ? (bankAccountsResponse as any).data.data
+            : [];
+
       setBills(billsList);
       setSuppliers(suppliersList);
+          setBankAccounts(banksList);
     } catch (error) {
       console.error('Error loading data:', error);
       alert('Error al cargar los datos');
@@ -186,9 +212,12 @@ export function Purchases() {
 
       const supplierName = String(emisor?.nombre || emisor?.nombreComercial || '').trim();
       const supplierTaxId = String(emisor?.nit || emisor?.rfc || '').trim();
+      const supplierPhone = String(emisor?.telefono || '').trim();
+      const supplierEmail = String(emisor?.correo || '').trim();
+      const supplierAddress = String(emisor?.direccion?.complemento || '').trim();
 
       const matchedSupplier = suppliers.find((supplier) => {
-        const byTax = supplierTaxId && String(supplier.rfc || '').toLowerCase() === supplierTaxId.toLowerCase();
+        const byTax = supplierTaxId && String(supplier.nit || '').toLowerCase() === supplierTaxId.toLowerCase();
         const byName = supplierName && supplier.name.toLowerCase() === supplierName.toLowerCase();
         return byTax || byName;
       });
@@ -226,6 +255,9 @@ export function Purchases() {
         supplier_id: matchedSupplier ? String(matchedSupplier.id) : '',
         supplier_name_snapshot: supplierName,
         supplier_tax_id_snapshot: supplierTaxId,
+        supplier_phone_snapshot: supplierPhone,
+        supplier_email_snapshot: supplierEmail,
+        supplier_address_snapshot: supplierAddress,
         bill_number: String(identificacion?.numeroControl || current.bill_number),
         bill_date: billDate,
         due_date: plusDays(billDate, matchedSupplier?.credit_days || 30),
@@ -282,6 +314,9 @@ export function Purchases() {
       supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
       supplier_name_snapshot: formData.supplier_name_snapshot || undefined,
       supplier_tax_id_snapshot: formData.supplier_tax_id_snapshot || undefined,
+      supplier_phone_snapshot: formData.supplier_phone_snapshot || undefined,
+      supplier_email_snapshot: formData.supplier_email_snapshot || undefined,
+      supplier_address_snapshot: formData.supplier_address_snapshot || undefined,
       bill_number: formData.bill_number,
       bill_date: formData.bill_date,
       due_date: formData.due_date || formData.bill_date,
@@ -349,7 +384,10 @@ export function Purchases() {
       dte_sello_recibido: bill.dte_sello_recibido || '',
       dte_firma_electronica: bill.dte_firma_electronica || '',
       supplier_name_snapshot: bill.supplier_name_snapshot || bill.supplier?.name || '',
-      supplier_tax_id_snapshot: bill.supplier_tax_id_snapshot || bill.supplier?.rfc || '',
+      supplier_tax_id_snapshot: bill.supplier_tax_id_snapshot || bill.supplier?.nit || '',
+      supplier_phone_snapshot: bill.supplier_phone_snapshot || bill.supplier?.phone || '',
+      supplier_email_snapshot: bill.supplier_email_snapshot || bill.supplier?.email || '',
+      supplier_address_snapshot: bill.supplier_address_snapshot || bill.supplier?.address || '',
       dte_emisor: bill.dte_emisor || null,
       dte_receptor: bill.dte_receptor || null,
       dte_cuerpo_documento: bill.dte_cuerpo_documento || [],
@@ -379,6 +417,44 @@ export function Purchases() {
     setEditingBill(null);
     setImportedFromJson(false);
     setFormData(emptyForm());
+  };
+
+  const openPaymentModal = (bill: Bill) => {
+    setBillToPay(bill);
+    setPaymentData({
+      bank_account_id: '',
+      amount: String(Number(bill.balance || 0).toFixed(2)),
+      payment_date: new Date().toISOString().split('T')[0],
+      reference: bill.bill_number,
+      notes: '',
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handlePay = async () => {
+    if (!billToPay) return;
+    if (!paymentData.bank_account_id) {
+      alert('Selecciona una cuenta bancaria para aplicar el pago.');
+      return;
+    }
+
+    try {
+      await billsApi.pay(billToPay.id, {
+        bank_account_id: Number(paymentData.bank_account_id),
+        amount: Number(paymentData.amount || 0),
+        payment_date: paymentData.payment_date,
+        reference: paymentData.reference || undefined,
+        notes: paymentData.notes || undefined,
+      });
+
+      setShowPaymentModal(false);
+      setBillToPay(null);
+      await loadData();
+      alert('Pago aplicado correctamente.');
+    } catch (error: any) {
+      console.error('Error paying bill:', error);
+      alert('Error al aplicar pago: ' + (error?.message || 'Error desconocido'));
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -467,6 +543,15 @@ export function Purchases() {
                     <td className="px-4 py-3 text-sm">{getStatusBadge(bill.status)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
+                        {Number(bill.balance || 0) > 0 && !['paid', 'void', 'cancelled'].includes(String(bill.status)) && (
+                          <button
+                            onClick={() => openPaymentModal(bill)}
+                            className="text-emerald-600 hover:text-emerald-800"
+                            title="Pagar"
+                          >
+                            PAGAR
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(bill)}
                           className="text-slate-600 hover:text-slate-800"
@@ -659,14 +744,17 @@ export function Purchases() {
                     <div className="bg-white border border-slate-200 rounded-lg p-3">
                       <p className="text-xs text-slate-500">Emisor</p>
                       <p className="font-medium text-slate-800">{formData.dte_emisor?.nombre || formData.supplier_name_snapshot || '-'}</p>
-                      <p className="text-sm text-slate-600">NIT/RFC: {formData.dte_emisor?.nit || formData.supplier_tax_id_snapshot || '-'}</p>
+                      <p className="text-sm text-slate-600">NIT: {formData.dte_emisor?.nit || formData.supplier_tax_id_snapshot || '-'}</p>
+                      <p className="text-sm text-slate-600">Tel: {formData.dte_emisor?.telefono || formData.supplier_phone_snapshot || '-'}</p>
+                      <p className="text-sm text-slate-600">Email: {formData.dte_emisor?.correo || formData.supplier_email_snapshot || '-'}</p>
+                      <p className="text-xs text-slate-500">Dirección: {formData.dte_emisor?.direccion?.complemento || formData.supplier_address_snapshot || '-'}</p>
                       <p className="text-xs text-slate-500">NRC: {formData.dte_emisor?.nrc || '-'}</p>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-lg p-3">
                       <p className="text-xs text-slate-500">Receptor</p>
                       <p className="font-medium text-slate-800">{formData.dte_receptor?.nombre || '-'}</p>
-                      <p className="text-sm text-slate-600">NIT/RFC: {formData.dte_receptor?.nit || '-'}</p>
+                      <p className="text-sm text-slate-600">NIT: {formData.dte_receptor?.nit || '-'}</p>
                       <p className="text-xs text-slate-500">NRC: {formData.dte_receptor?.nrc || '-'}</p>
                     </div>
                   </div>
@@ -735,6 +823,84 @@ export function Purchases() {
               >
                 <Save className="w-5 h-5" />
                 Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && billToPay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xl">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Aplicar Pago</h3>
+            <p className="text-sm text-slate-600 mb-4">Factura: {billToPay.bill_number} | Saldo: ${formatAmount(billToPay.balance)}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta Bancaria *</label>
+                <select
+                  value={paymentData.bank_account_id}
+                  onChange={(e) => setPaymentData({ ...paymentData, bank_account_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="">Seleccionar cuenta...</option>
+                  {bankAccounts.map((account) => (
+                    <option key={account.id} value={String(account.id)}>
+                      {account.bank_name} - {account.account_number} (Saldo: ${formatAmount(account.current_balance)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Monto</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={paymentData.amount}
+                    onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Pago</label>
+                  <input
+                    type="date"
+                    value={paymentData.payment_date}
+                    onChange={(e) => setPaymentData({ ...paymentData, payment_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Referencia</label>
+                <input
+                  type="text"
+                  value={paymentData.reference}
+                  onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setBillToPay(null);
+                }}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePay}
+                className="flex-1 px-4 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Confirmar Pago
               </button>
             </div>
           </div>

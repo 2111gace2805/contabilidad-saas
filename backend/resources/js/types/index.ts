@@ -14,7 +14,8 @@ export interface User {
 export interface Company {
   id: number;
   name: string;
-  rfc: string;
+  nit: string | null;
+  rfc?: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
@@ -155,7 +156,8 @@ export interface Customer {
   business_name?: string | null;
   profile_type?: 'natural' | 'juridical';
   contact_name?: string | null;
-  rfc: string | null;
+  nit: string | null;
+  rfc?: string | null;
   email?: string | null;
   email1?: string | null;
   email2?: string | null;
@@ -164,7 +166,6 @@ export interface Customer {
   address: string | null;
   credit_limit: string;
   credit_days: number;
-  nit?: string | null;
   nrc?: string | null;
   dui?: string | null;
   depa_id?: string | null;
@@ -185,7 +186,7 @@ export interface Supplier {
   company_id: number;
   code: string;
   name: string;
-  rfc: string | null;
+  nit: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -256,6 +257,9 @@ export interface Bill {
   dte_raw_json?: string | null;
   supplier_name_snapshot?: string | null;
   supplier_tax_id_snapshot?: string | null;
+  supplier_phone_snapshot?: string | null;
+  supplier_email_snapshot?: string | null;
+  supplier_address_snapshot?: string | null;
   is_fiscal_credit?: boolean;
   created_at: string;
   updated_at: string;

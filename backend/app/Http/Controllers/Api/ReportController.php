@@ -210,7 +210,7 @@ class ReportController extends Controller
 
         $query = Bill::where('company_id', $companyId)
             ->where('is_fiscal_credit', true)
-            ->with('supplier:id,name,rfc');
+            ->with('supplier:id,name,nit');
 
         if ($request->filled('date_from')) {
             $query->whereDate('bill_date', '>=', $request->date_from);
@@ -224,7 +224,7 @@ class ReportController extends Controller
                 'invoice_date' => $bill->bill_date,
                 'invoice_number' => $bill->bill_number,
                 'supplier_name' => $bill->supplier?->name ?? $bill->supplier_name_snapshot,
-                'supplier_tax_id' => $bill->supplier?->rfc ?? $bill->supplier_tax_id_snapshot,
+                'supplier_tax_id' => $bill->supplier?->nit ?? $bill->supplier_tax_id_snapshot,
                 'subtotal' => (float) $bill->subtotal,
                 'tax_amount' => (float) $bill->tax,
                 'total' => (float) $bill->total,
@@ -258,7 +258,7 @@ class ReportController extends Controller
         }
 
         $query = Bill::where('company_id', $companyId)
-            ->with(['supplier:id,name,rfc'])
+            ->with(['supplier:id,name,nit'])
             ->whereIn('status', ['pending', 'partial', 'overdue']);
 
         if ($request->filled('date_from')) {
@@ -275,7 +275,7 @@ class ReportController extends Controller
                 'bill_date' => $bill->bill_date,
                 'due_date' => $bill->due_date,
                 'supplier' => $bill->supplier?->name,
-                'supplier_tax_id' => $bill->supplier?->rfc,
+                'supplier_tax_id' => $bill->supplier?->nit,
                 'total' => (float) $bill->total,
                 'balance' => (float) $bill->balance,
                 'status' => $bill->status,

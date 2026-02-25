@@ -16,7 +16,8 @@ class Bill extends Model
         'dte_numero_control', 'dte_codigo_generacion', 'dte_fec_emi', 'dte_hor_emi',
         'dte_sello_recibido', 'dte_firma_electronica', 'dte_emisor', 'dte_receptor',
         'dte_cuerpo_documento', 'dte_resumen', 'dte_apendice', 'dte_raw_json',
-        'supplier_name_snapshot', 'supplier_tax_id_snapshot', 'is_fiscal_credit',
+        'supplier_name_snapshot', 'supplier_tax_id_snapshot', 'supplier_phone_snapshot',
+        'supplier_email_snapshot', 'supplier_address_snapshot', 'is_fiscal_credit',
     ];
 
     protected function casts(): array

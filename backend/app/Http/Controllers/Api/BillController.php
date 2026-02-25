@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
+use App\Models\BankTransaction;
 use App\Models\Bill;
+use App\Models\InventoryItem;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class BillController extends Controller
@@ -31,7 +36,16 @@ class BillController extends Controller
                 $data['supplier_name_snapshot'] = $supplier->name;
             }
             if (empty($data['supplier_tax_id_snapshot'])) {
-                $data['supplier_tax_id_snapshot'] = $supplier->rfc;
+                $data['supplier_tax_id_snapshot'] = $supplier->nit;
+            }
+            if (empty($data['supplier_phone_snapshot'])) {
+                $data['supplier_phone_snapshot'] = $supplier->phone;
+            }
+            if (empty($data['supplier_email_snapshot'])) {
+                $data['supplier_email_snapshot'] = $supplier->email;
+            }
+            if (empty($data['supplier_address_snapshot'])) {
+                $data['supplier_address_snapshot'] = $supplier->address;
             }
 
             return (int) $supplier->id;
@@ -47,7 +61,7 @@ class BillController extends Controller
         $existing = Supplier::where('company_id', $companyId)
             ->where(function ($query) use ($name, $taxId) {
                 if ($taxId !== '') {
-                    $query->orWhere('rfc', $taxId);
+                    $query->orWhere('nit', $taxId);
                 }
                 if ($name !== '') {
                     $query->orWhere('name', $name);
@@ -64,7 +78,10 @@ class BillController extends Controller
             'company_id' => $companyId,
             'code' => $generatedCode,
             'name' => $name !== '' ? $name : 'Proveedor desde DTE',
-            'rfc' => $taxId !== '' ? $taxId : null,
+            'nit' => $taxId !== '' ? $taxId : null,
+            'phone' => $data['supplier_phone_snapshot'] ?? null,
+            'email' => $data['supplier_email_snapshot'] ?? null,
+            'address' => $data['supplier_address_snapshot'] ?? null,
             'active' => true,
             'credit_days' => 30,
         ]);
@@ -134,6 +151,9 @@ class BillController extends Controller
             'dte_raw_json' => 'nullable|string',
             'supplier_name_snapshot' => 'nullable|string|max:255',
             'supplier_tax_id_snapshot' => 'nullable|string|max:50',
+            'supplier_phone_snapshot' => 'nullable|string|max:50',
+            'supplier_email_snapshot' => 'nullable|string|max:255',
+            'supplier_address_snapshot' => 'nullable|string',
             'is_fiscal_credit' => 'nullable|boolean',
         ]);
 
@@ -172,6 +192,9 @@ class BillController extends Controller
         $data['company_id'] = $companyId;
 
         $bill = Bill::create($data);
+        if (!empty($data['dte_cuerpo_documento']) && is_array($data['dte_cuerpo_documento'])) {
+            $this->syncInventoryFromDteItems((int) $companyId, $data['dte_cuerpo_documento']);
+        }
         $bill->load('supplier');
         
         return response()->json($bill, 201);
@@ -222,6 +245,9 @@ class BillController extends Controller
             'dte_raw_json' => 'nullable|string',
             'supplier_name_snapshot' => 'nullable|string|max:255',
             'supplier_tax_id_snapshot' => 'nullable|string|max:50',
+            'supplier_phone_snapshot' => 'nullable|string|max:50',
+            'supplier_email_snapshot' => 'nullable|string|max:255',
+            'supplier_address_snapshot' => 'nullable|string',
             'is_fiscal_credit' => 'nullable|boolean',
         ]);
 
@@ -244,6 +270,161 @@ class BillController extends Controller
         $bill->load('supplier');
         
         return response()->json($bill);
+    }
+
+    public function pay(Request $request, $id)
+    {
+        $companyId = $this->getCompanyId($request);
+
+        if (!$companyId) {
+            return response()->json(['message' => 'Company ID required'], 400);
+        }
+
+        $bill = Bill::where('company_id', $companyId)->findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'amount' => 'nullable|numeric|min:0.01',
+            'payment_date' => 'nullable|date',
+            'reference' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = $validator->validated();
+        $paymentAmount = (float) ($data['amount'] ?? $bill->balance);
+        $currentBalance = (float) $bill->balance;
+
+        if ($currentBalance <= 0) {
+            return response()->json(['message' => 'Bill already paid'], 400);
+        }
+
+        if ($paymentAmount > $currentBalance) {
+            return response()->json(['message' => 'Payment amount cannot exceed bill balance'], 422);
+        }
+
+        $bankAccount = BankAccount::where('company_id', $companyId)
+            ->where('id', $data['bank_account_id'])
+            ->first();
+
+        if (!$bankAccount) {
+            return response()->json(['message' => 'Bank account not found in current company'], 404);
+        }
+
+        if ((float) $bankAccount->current_balance < $paymentAmount) {
+            return response()->json(['message' => 'Insufficient bank account balance'], 422);
+        }
+
+        $paymentDate = $data['payment_date'] ?? now()->toDateString();
+
+        DB::transaction(function () use ($companyId, $bill, $bankAccount, $paymentAmount, $paymentDate, $data, $request) {
+            $nextNumber = sprintf('PG-%s-%06d', now()->format('Ymd'), (int) ((SupplierPayment::max('id') ?? 0) + 1));
+
+            $supplierPayment = SupplierPayment::create([
+                'company_id' => $companyId,
+                'supplier_id' => $bill->supplier_id,
+                'payment_number' => $nextNumber,
+                'payment_date' => $paymentDate,
+                'amount' => $paymentAmount,
+                'payment_method' => 'bank_transfer',
+                'reference' => $data['reference'] ?? $bill->bill_number,
+            ]);
+
+            $bill->payments()->attach($supplierPayment->id, ['amount' => $paymentAmount]);
+
+            $newBalance = round(((float) $bill->balance - $paymentAmount), 2);
+            $bill->balance = $newBalance;
+            $bill->status = $newBalance <= 0 ? 'paid' : 'partial';
+            if (!empty($data['notes'])) {
+                $existingNotes = (string) ($bill->notes ?? '');
+                $bill->notes = trim($existingNotes . "\n" . 'Pago: ' . $data['notes']);
+            }
+            $bill->save();
+
+            $bankAccount->current_balance = round(((float) $bankAccount->current_balance - $paymentAmount), 2);
+            $bankAccount->save();
+
+            BankTransaction::create([
+                'company_id' => $companyId,
+                'bank_account_id' => $bankAccount->id,
+                'transaction_date' => $paymentDate,
+                'transaction_type' => 'withdrawal',
+                'amount' => $paymentAmount,
+                'reference_number' => $data['reference'] ?? $supplierPayment->payment_number,
+                'description' => 'Pago de factura de compra ' . $bill->bill_number,
+                'counterparty_type' => 'supplier',
+                'counterparty_id' => $bill->supplier_id,
+                'created_by' => $request->user()?->id,
+            ]);
+        });
+
+        $bill->refresh();
+        $bill->load('supplier');
+
+        return response()->json([
+            'message' => 'Pago aplicado correctamente',
+            'bill' => $bill,
+        ]);
+    }
+
+    private function syncInventoryFromDteItems(int $companyId, array $lines): void
+    {
+        foreach ($lines as $line) {
+            $tipoItem = (int) ($line['tipoItem'] ?? 0);
+            $isProduct = in_array($tipoItem, [1, 3, 4], true);
+            if (!$isProduct) {
+                continue;
+            }
+
+            $itemCode = trim((string) ($line['codigo'] ?? ''));
+            if ($itemCode === '') {
+                $itemCode = 'ITEM-' . (string) ($line['numItem'] ?? uniqid());
+            }
+
+            $description = trim((string) ($line['descripcion'] ?? 'Producto desde DTE'));
+            $quantity = (float) ($line['cantidad'] ?? 0);
+            if ($quantity <= 0) {
+                $quantity = 1;
+            }
+
+            $unitCost = (float) ($line['precioUni'] ?? 0);
+            if ($unitCost <= 0) {
+                $lineTotal = (float) (($line['ventaGravada'] ?? 0) + ($line['ventaExenta'] ?? 0) + ($line['ventaNoSuj'] ?? 0));
+                $unitCost = $lineTotal > 0 ? $lineTotal / $quantity : 0;
+            }
+
+            $item = InventoryItem::where('company_id', $companyId)
+                ->where('item_code', $itemCode)
+                ->first();
+
+            if (!$item) {
+                InventoryItem::create([
+                    'company_id' => $companyId,
+                    'item_code' => $itemCode,
+                    'name' => mb_substr($description, 0, 255),
+                    'description' => $description,
+                    'unit_of_measure' => (string) ($line['uniMedida'] ?? 'UNI'),
+                    'cost_method' => 'average',
+                    'current_quantity' => $quantity,
+                    'average_cost' => $unitCost,
+                    'active' => true,
+                ]);
+                continue;
+            }
+
+            $oldQty = (float) $item->current_quantity;
+            $oldCost = (float) $item->average_cost;
+            $newQty = $oldQty + $quantity;
+
+            if ($newQty > 0) {
+                $item->average_cost = (($oldQty * $oldCost) + ($quantity * $unitCost)) / $newQty;
+            }
+            $item->current_quantity = $newQty;
+            $item->save();
+        }
     }
 
     public function destroy(Request $request, $id)

@@ -7,7 +7,7 @@ interface SupplierOption {
   id: number;
   code?: string;
   name?: string;
-  rfc?: string;
+  nit?: string;
   active?: boolean;
 }
 
@@ -52,7 +52,7 @@ export function SupplierAutocomplete({ value, onChange, className = '', placehol
           id: supplier.id,
           code: supplier.code,
           name: supplier.name,
-          rfc: supplier.rfc,
+          nit: supplier.nit,
           active: supplier.active,
         }));
 
@@ -69,7 +69,7 @@ export function SupplierAutocomplete({ value, onChange, className = '', placehol
 
     return options
       .filter((supplier) =>
-        [supplier.code, supplier.name, supplier.rfc]
+        [supplier.code, supplier.name, supplier.nit]
           .map((value) => String(value || '').toLowerCase())
           .some((value) => value.includes(term))
       )
@@ -203,7 +203,7 @@ export function SupplierAutocomplete({ value, onChange, className = '', placehol
               >
                 <div className="text-[10px] font-mono text-slate-400 mb-0.5 uppercase tracking-tighter">{option.code || 'SIN-COD'}</div>
                 <div className="font-medium truncate">{option.name || 'Proveedor sin nombre'}</div>
-                {option.rfc && <div className="text-[11px] text-slate-500">RFC/NIT: {option.rfc}</div>}
+                {option.nit && <div className="text-[11px] text-slate-500">NIT: {option.nit}</div>}
               </button>
             ))
           )}

@@ -7,7 +7,8 @@ import UserAutocomplete from '../common/UserAutocomplete';
 interface Company {
   id: number;
   name: string;
-  rfc: string;
+  nit?: string | null;
+  rfc?: string | null;
   currency: string;
   active: boolean;
   customers_count?: number;
@@ -44,7 +45,7 @@ export function SuperAdminDashboard() {
   const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
   const [companyForm, setCompanyForm] = useState({
     name: '',
-    rfc: '',
+    nit: '',
     address: '',
     phone: '',
     currency: 'USD',
@@ -106,8 +107,8 @@ export function SuperAdminDashboard() {
   };
 
   const handleCreateCompany = async () => {
-    if (!companyForm.name || !companyForm.rfc) {
-      alert('Nombre y RFC son obligatorios');
+    if (!companyForm.name || !companyForm.nit) {
+      alert('Nombre y NIT son obligatorios');
       return;
     }
 
@@ -121,7 +122,7 @@ export function SuperAdminDashboard() {
       }
       setShowCompanyModal(false);
       setEditingCompanyId(null);
-      setCompanyForm({ name: '', rfc: '', address: '', phone: '', currency: 'USD', fiscal_year_start: 1, admin_user_id: '', max_users: 3 });
+      setCompanyForm({ name: '', nit: '', address: '', phone: '', currency: 'USD', fiscal_year_start: 1, admin_user_id: '', max_users: 3 });
       loadData();
     } catch (error: any) {
       console.error('Error creating company:', error);
@@ -133,7 +134,7 @@ export function SuperAdminDashboard() {
     setEditingCompanyId(company.id);
     setCompanyForm({
       name: company.name || '',
-      rfc: company.rfc || '',
+      nit: company.nit || company.rfc || '',
       address: (company as any).address || '',
       phone: (company as any).phone || '',
       currency: company.currency || 'USD',
@@ -424,7 +425,7 @@ export function SuperAdminDashboard() {
                     <h3 className="text-lg font-bold text-slate-800 mb-2">{company.name}</h3>
 
                     <div className="space-y-1 text-sm text-slate-600 mb-4">
-                      <p><span className="font-medium">RFC:</span> {company.rfc}</p>
+                      <p><span className="font-medium">NIT:</span> {company.nit || company.rfc || '-'}</p>
                       <p><span className="font-medium">Moneda:</span> {company.currency}</p>
                       <p><span className="font-medium">Límite Usuarios:</span> {company.max_users}</p>
                     </div>
@@ -630,13 +631,13 @@ export function SuperAdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">RFC *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">NIT *</label>
                   <input
                     type="text"
-                    value={companyForm.rfc}
-                    onChange={(e) => setCompanyForm({ ...companyForm, rfc: e.target.value })}
+                    value={companyForm.nit}
+                    onChange={(e) => setCompanyForm({ ...companyForm, nit: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    placeholder="ABC123456XYZ"
+                    placeholder="0614-290980-102-3"
                   />
                 </div>
               </div>

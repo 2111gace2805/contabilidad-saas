@@ -30,6 +30,7 @@ class CustomerController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
                   ->orWhere('business_name', 'like', "%{$search}%")
+                                    ->orWhere('nit', 'like', "%{$search}%")
                   ->orWhere('rfc', 'like', "%{$search}%")
                   ->orWhere('email1', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
@@ -50,7 +51,12 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Company ID required'], 400);
         }
 
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:customers,code,NULL,id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
@@ -84,6 +90,9 @@ class CustomerController extends Controller
 
         $data = $validator->validated();
         $data['company_id'] = $companyId;
+        if (!isset($data['rfc']) && isset($data['nit'])) {
+            $data['rfc'] = $data['nit'];
+        }
         $data['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente');
         $data['is_exento_iva'] = $request->boolean('is_exento_iva');
         $data['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva');
@@ -110,7 +119,12 @@ class CustomerController extends Controller
         
         $customer = Customer::where('company_id', $companyId)->findOrFail($id);
         
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'sometimes|required|string|max:255',
             'code' => 'required|string|max:50|unique:customers,code,' . $id . ',id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
@@ -143,6 +157,9 @@ class CustomerController extends Controller
         }
 
         $validated = $validator->validated();
+        if (!isset($validated['rfc']) && isset($validated['nit'])) {
+            $validated['rfc'] = $validated['nit'];
+        }
         $validated['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente', $customer->is_gran_contribuyente);
         $validated['is_exento_iva'] = $request->boolean('is_exento_iva', $customer->is_exento_iva);
         $validated['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva', $customer->is_no_sujeto_iva);

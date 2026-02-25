@@ -478,6 +478,16 @@ export const bills = {
   async delete(id: number) {
     return ApiClient.delete(`/bills/${id}`);
   },
+
+  async pay(id: number, data: {
+    bank_account_id: number;
+    amount?: number;
+    payment_date?: string;
+    reference?: string;
+    notes?: string;
+  }) {
+    return ApiClient.post<{ message: string; bill: Types.Bill }>(`/bills/${id}/pay`, data);
+  },
 };
 
 // Inventory Items API
