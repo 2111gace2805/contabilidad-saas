@@ -21,7 +21,12 @@ class CompanyController extends Controller
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
             'rfc' => 'nullable|string|max:20',
             'nrc' => 'nullable|string|max:20',
@@ -37,7 +42,12 @@ class CompanyController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $company = Company::create($validator->validated());
+        $data = $validator->validated();
+        if (!isset($data['rfc']) && isset($data['nit'])) {
+            $data['rfc'] = $data['nit'];
+        }
+
+        $company = Company::create($data);
         
         $request->user()->companies()->attach($company->id, ['role' => 'admin']);
         
@@ -54,8 +64,13 @@ class CompanyController extends Controller
     public function update(Request $request, $id)
     {
         $company = $request->user()->companies()->findOrFail($id);
+
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
         
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($input, [
             'name' => 'sometimes|required|string|max:255',
             'rfc' => 'nullable|string|max:20',
             'nrc' => 'nullable|string|max:20',
@@ -72,7 +87,12 @@ class CompanyController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $company->update($validator->validated());
+        $data = $validator->validated();
+        if (!isset($data['rfc']) && isset($data['nit'])) {
+            $data['rfc'] = $data['nit'];
+        }
+
+        $company->update($data);
         
         return response()->json($company);
     }

@@ -5,6 +5,7 @@
         "true": true,
         "mv": true,
         "Test-Path": true,
-        "Set-Content": true
+        "Set-Content": true,
+        "wsl": true
     }
 }

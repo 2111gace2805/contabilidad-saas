@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountingSegment;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -101,8 +102,18 @@ class AccountingSegmentController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $segment = AccountingSegment::where('company_id', $companyId)->findOrFail($id);
-        
-        $segment->delete();
+
+        try {
+            $segment->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este segmento contable porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Accounting segment deleted successfully']);
     }

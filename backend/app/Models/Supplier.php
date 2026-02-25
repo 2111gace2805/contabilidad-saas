@@ -10,9 +10,11 @@ class Supplier extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_id', 'code', 'name', 'rfc', 'address',
+        'company_id', 'code', 'name', 'nit', 'address',
         'phone', 'email', 'credit_days', 'active',
     ];
+
+    protected $appends = ['rfc'];
 
     protected function casts(): array
     {
@@ -34,5 +36,15 @@ class Supplier extends Model
     public function payments()
     {
         return $this->hasMany(SupplierPayment::class);
+    }
+
+    public function getRfcAttribute()
+    {
+        return $this->attributes['nit'] ?? null;
+    }
+
+    public function setRfcAttribute($value)
+    {
+        $this->attributes['nit'] = $value;
     }
 }

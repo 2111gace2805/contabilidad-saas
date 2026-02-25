@@ -11,6 +11,7 @@ class InventoryItem extends Model
 
     protected $fillable = [
         'company_id', 'item_code', 'name', 'description',
+        'item_type',
         'unit_of_measure', 'cost_method', 'current_quantity',
         'average_cost', 'inventory_account_id', 'cogs_account_id', 'active',
     ];

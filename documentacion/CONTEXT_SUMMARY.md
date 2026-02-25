@@ -28,7 +28,7 @@ A continuación, se detalla la descripción general de cada archivo Markdown inc
 - **/Users/boris/projects/contabilidad-saas/documentacion/GUIA_DISENO_ESTILOS.md:** Guía de diseño y estilos del sistema, detallando colores, tipografía, componentes UI base (botones, tarjetas, modales) y principios de diseño utilizando Tailwind CSS. Referencia obligatoria para mantener la consistencia visual.
 
 ### Archivos del Backend
-- **/Users/boris/projects/contabilidad-saas/backend/ANULACION_POLIZAS.md:** Documenta la solución para manejar anulaciones de pólizas contables, incluyendo cambios en la base de datos y migraciones.
+- **/Users/boris/projects/contabilidad-saas/backend/ANULACION_POLIZAS.md:** Documenta la solución para manejar anulaciones de partidas contables, incluyendo cambios en la base de datos y migraciones.
 - **/Users/boris/projects/contabilidad-saas/backend/API_DOCUMENTATION.md:** Documentación completa de la API REST, con detalles de autenticación y ejemplos de uso para cada endpoint.
 - **/Users/boris/projects/contabilidad-saas/backend/API_IMPLEMENTATION_SUMMARY.md:** Resumen de la implementación de la API REST, incluyendo los controladores y endpoints principales.
 - **/Users/boris/projects/contabilidad-saas/backend/ASOCIACION_CUENTAS_SEGMENTOS.md:** Explica cómo se asocian las cuentas contables con los segmentos, detallando el modelo de relación y la configuración estándar.
@@ -39,15 +39,15 @@ A continuación, se detalla la descripción general de cada archivo Markdown inc
 - **/Users/boris/projects/contabilidad-saas/backend/CONTROL_PERIODOS_FISCALES.md:** Detalla el sistema de control de periodos fiscales, con validaciones automáticas y restricciones a nivel de base de datos.
 - **/Users/boris/projects/contabilidad-saas/backend/ESTRUCTURA_MENU.md:** Describe la estructura reorganizada del menú lateral, dividida en secciones lógicas para mejorar la navegación.
 - **/Users/boris/projects/contabilidad-saas/backend/FIX_LOGIN_ERROR.md:** Solución para el error de login "405 Method Not Allowed", incluyendo pasos para limpiar cachés y reiniciar servidores.
-- **/Users/boris/projects/contabilidad-saas/backend/FLUJO_POLIZAS.md:** Explica el flujo de trabajo de las pólizas contables, desde el estado de borrador hasta la anulación. (Actualizado: la pantalla **Nueva Póliza** ahora permite agregar líneas de detalle (débito/crédito), editar el correlativo por línea, guardar borradores incluso descuadrados, validar cuadratura antes de contabilizar y autocompletar cuentas mientras se digita.)
+- **/Users/boris/projects/contabilidad-saas/backend/FLUJO_POLIZAS.md:** Explica el flujo de trabajo de las partidas contables, desde el estado de borrador hasta la anulación. (Actualizado: la pantalla **Nueva Partida** ahora permite agregar líneas de detalle (débito/crédito), editar el correlativo por línea, guardar borradores incluso descuadrados, validar cuadratura antes de contabilizar y autocompletar cuentas mientras se digita.)
 - **/Users/boris/projects/contabilidad-saas/backend/GUIA_USO.md:** Guía de uso para el sistema contable multi-empresa, desde el registro de usuarios hasta la creación de empresas.
 
 ---
 ## Módulo de Facturación
 
-Las facturas generan automáticamente pólizas contables.
+Las facturas generan automáticamente partidas contables.
 
-No deben registrarse manualmente las pólizas de venta.
+No deben registrarse manualmente las partidas de venta.
 
 El estado POSTED es inmutable.
 
@@ -57,7 +57,7 @@ Nunca usar MAX() para generar correlativos.
 
 No mezclar company_id.
 
-El módulo de facturación genera automáticamente pólizas contables y maneja correlativos independientes por empresa.
+El módulo de facturación genera automáticamente partidas contables y maneja correlativos independientes por empresa.
 
 Implementación reciente: se añadieron migraciones y un seeder para manejar los correlativos de facturación (`invoice_sequences`) por empresa y año fiscal. La generación de correlativos se implementa usando transacciones y `lockForUpdate()` para cumplir con las NIF y evitar condiciones de carrera.
 

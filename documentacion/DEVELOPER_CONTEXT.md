@@ -25,7 +25,7 @@ Existen tres niveles jerárquicos definidos en `User.php` y protegidos por middl
 - **ADMIN**: Administrador de la empresa. Acceso total a módulos y configuración.
 - **USUARIO**: Operador/Contador. Acceso a módulos operativos, sin acceso a configuración.
 
-### 3. Flujo de Pólizas (Journal Entries)
+### 3. Flujo de Partidas (Journal Entries)
 Se implementa un patrón de "Documento en Borrador":
 - `draft`: Editable, no afecta saldos.
 - `posted`: No editable, genera registros en el libro mayor.
@@ -35,10 +35,10 @@ Se implementa un patrón de "Documento en Borrador":
 - **Mensajes de Usuario**: Todos los mensajes de error, notificaciones y etiquetas en la UI deben estar en **Español**.
 - **Validaciones**: Las respuestas de validación del backend deben ser traducidas o personalizadas al español.
 
-### 5. Secuenciación de Pólizas
-Las pólizas utilizan tres identificadores para su control y visualización:
+### 5. Secuenciación de Partidas
+Las partidas utilizan tres identificadores para su control y visualización:
 - **Identificador (`sequence_number`)**: Un número incremental global por cada empresa (infinito).
-- **Tipo de Partida (`entry_type`)**: Categoría de la póliza (PD, PI, PE, PA, etc.).
+- **Tipo de Partida (`entry_type`)**: Categoría de la partida (PD, PI, PE, PA, etc.).
 - **Correlativo (`type_number`)**: Un número incremental de 7 dígitos que se gestiona por cada tipo de partida dentro de la misma empresa.
 
 ## 📐 Estándares de Código
@@ -59,7 +59,7 @@ Las pólizas utilizan tres identificadores para su control y visualización:
 
 - **Ubicación**: `/tests/backend` para PHPUnit.
 - **Ejecución**: `docker-compose exec backend vendor/bin/phpunit`.
-- **Feature Tests**: Priorizar pruebas de integración que validen flujos completos (ej: creación de póliza balanceada).
+- **Feature Tests**: Priorizar pruebas de integración que validen flujos completos (ej: creación de partida balanceada).
 
 ## 🚀 Despliegue y Docker
 
@@ -72,6 +72,40 @@ Las pólizas utilizan tres identificadores para su control y visualización:
 - `RBAC_IMPLEMENTATION.md`: Detalles técnicos del sistema de roles.
 - `FLUJO_POLIZAS.md`: Lógica del motor contable.
 - `CONFIGURACION_EMPRESA.md`: Estructura del módulo de settings.
+
+## 🧾 Compras con JSON DTE
+
+- El módulo de compras soporta importación de JSON DTE (MH El Salvador) para autocompletar encabezado, emisor, detalle y resumen.
+- Campos críticos no editables cuando se importa JSON: `Correlativo/numeroControl` y `Fecha de emisión`.
+- Si el proveedor del JSON no existe en catálogo, el backend guarda la compra con snapshot del emisor y crea proveedor automáticamente en la empresa.
+- Se persiste metadata DTE en `bills`: tipo DTE, código de generación, sello recibido, firma, bloques JSON (`emisor`, `receptor`, `cuerpoDocumento`, `resumen`, `apendice`) y JSON crudo.
+- Regla fiscal: solo compras con `tipo_dte = "03"` (Comprobante de Crédito Fiscal) alimentan `Libro de Compras`; `tipo_dte = "01"` se registra en compras pero no entra al libro.
+
+## 🆕 Ajustes ERP recientes (Febrero 2026)
+
+- **Clientes**
+	- El alta de cliente mantiene `Tipo de Cliente` como selector principal en UI.
+	- Backend normaliza payloads de integración con alias (`nombre`, `correo`, `telefono`, `codActividad`, `direccion.*`) para evitar 422 por diferencias de nombre de campos.
+	- Si no llega `district_id`, el backend intenta resolver uno válido según municipio.
+
+- **Facturación (Nueva Factura)**
+	- Búsqueda de ítems/productos con autocompletado conectado a backend (`search` + paginación), no solo listado local inicial.
+	- El usuario escribe y autocompleta; el tipo de ítem se determina automáticamente desde catálogo de inventario.
+
+- **Inventario / Ítems**
+	- Se formalizó `item_type` con valores `bien`, `servicio`, `ambos` en base de datos, backend y frontend.
+
+- **Administración → Tipos de Cuenta**
+	- Interfaz y etiquetas unificadas en español.
+	- Flujo de `Nuevo Tipo`, edición y eliminación funcional.
+	- Naturaleza mostrada como `Deudora`/`Acreedora`.
+
+- **Dashboard**
+	- Se estandarizó la respuesta de `/api/dashboard` al formato esperado por frontend.
+	- CxP/CxC ahora reflejan saldos pendientes reales por estados operativos, evitando valores en cero cuando existen documentos.
+
+- **Configuración → Datos Generales (Emisor)**
+	- Se agregó captura completa para datos del emisor DTE: actividad económica, dirección por catálogo (departamento/municipio), nombre comercial, tipo de establecimiento, correo DTE y códigos de establecimiento/punto de venta.
 
 ---
 *Última actualización: Febrero 2026*

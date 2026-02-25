@@ -8,6 +8,7 @@ use App\Models\JournalEntryLine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Support\AuditLogger;
 
 class JournalEntryController extends Controller
 {
@@ -132,6 +133,16 @@ class JournalEntryController extends Controller
             }
 
             DB::commit();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'journal.create',
+                'journal_entry',
+                (string) $entry->id,
+                'Partida creada',
+                ['entry_number' => $entry->entry_number, 'status' => $entry->status]
+            );
             
             $entry->load(['lines.account', 'creator']);
             
@@ -299,6 +310,16 @@ class JournalEntryController extends Controller
             }
 
             DB::commit();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'journal.update',
+                'journal_entry',
+                (string) $entry->id,
+                'Partida actualizada',
+                ['entry_number' => $entry->entry_number, 'status' => $entry->status]
+            );
             
             $entry->load(['lines.account', 'creator']);
             
@@ -325,6 +346,16 @@ class JournalEntryController extends Controller
             $entry->delete();
             
             DB::commit();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'journal.delete',
+                'journal_entry',
+                (string) $id,
+                'Partida eliminada',
+                []
+            );
             
             return response()->json(['message' => 'Partida eliminada exitosamente']);
         } catch (\Exception $e) {
@@ -353,6 +384,16 @@ class JournalEntryController extends Controller
         try {
             $this->assignNumbersAndPost($entry);
             DB::commit();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'journal.post',
+                'journal_entry',
+                (string) $entry->id,
+                'Partida contabilizada',
+                ['entry_number' => $entry->entry_number]
+            );
             
             $entry->load(['lines.account', 'creator']);
             return response()->json(['message' => 'Partida contabilizada exitosamente', 'entry' => $entry]);
@@ -386,6 +427,16 @@ class JournalEntryController extends Controller
             'void_requested_at' => now(),
         ]);
 
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'journal.void.request',
+            'journal_entry',
+            (string) $entry->id,
+            'Solicitud de anulación de partida',
+            ['reason' => $request->reason]
+        );
+
         return response()->json(['message' => 'Solicitud de anulación enviada', 'entry' => $entry]);
     }
 
@@ -406,6 +457,16 @@ class JournalEntryController extends Controller
             'void_authorized_by' => $request->user()->id,
             'void_authorized_at' => now(),
         ]);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'journal.void.authorize',
+            'journal_entry',
+            (string) $entry->id,
+            'Anulación de partida autorizada',
+            []
+        );
 
         return response()->json(['message' => 'Partida anulada exitosamente', 'entry' => $entry]);
     }

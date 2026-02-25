@@ -383,8 +383,9 @@ export const customers = {
 
 // Suppliers API
 export const suppliers = {
-  async getAll() {
-    return ApiClient.get<Types.Supplier[]>('/suppliers');
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<Types.Supplier[] | { data: Types.Supplier[] }>(`/suppliers${query}`);
   },
 
   async getById(id: number) {
@@ -401,6 +402,10 @@ export const suppliers = {
 
   async delete(id: number) {
     return ApiClient.delete(`/suppliers/${id}`);
+  },
+
+  async search(term: string) {
+    return ApiClient.get<Types.Supplier[] | { data: Types.Supplier[] }>(`/suppliers?search=${encodeURIComponent(term)}&per_page=50`);
   },
 };
 
@@ -473,12 +478,23 @@ export const bills = {
   async delete(id: number) {
     return ApiClient.delete(`/bills/${id}`);
   },
+
+  async pay(id: number, data: {
+    bank_account_id: number;
+    amount?: number;
+    payment_date?: string;
+    reference?: string;
+    notes?: string;
+  }) {
+    return ApiClient.post<{ message: string; bill: Types.Bill }>(`/bills/${id}/pay`, data);
+  },
 };
 
 // Inventory Items API
 export const inventoryItems = {
-  async getAll() {
-    return ApiClient.get<Types.InventoryItem[]>('/inventory-items');
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<Types.InventoryItem[] | { data: Types.InventoryItem[] }>(`/inventory-items${query}`);
   },
 
   async getById(id: number) {
@@ -495,6 +511,10 @@ export const inventoryItems = {
 
   async delete(id: number) {
     return ApiClient.delete(`/inventory-items/${id}`);
+  },
+
+  async search(term: string) {
+    return ApiClient.get<Types.InventoryItem[] | { data: Types.InventoryItem[] }>(`/inventory-items?search=${encodeURIComponent(term)}&per_page=50`);
   },
 };
 
@@ -594,6 +614,24 @@ export const paymentMethods = {
 
   async delete(id: number) {
     return ApiClient.delete(`/payment-methods/${id}`);
+  },
+};
+
+// Company Preferences API
+export const companyPreferences = {
+  async get() {
+    return ApiClient.get<Types.CompanyPreference>('/company-preferences');
+  },
+
+  async update(data: Partial<Types.CompanyPreference>) {
+    return ApiClient.put<Types.CompanyPreference>('/company-preferences', data);
+  },
+};
+
+export const auditLogs = {
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<{ data: Types.AuditLog[]; current_page: number; last_page: number; total: number }>(`/audit-logs${query}`);
   },
 };
 

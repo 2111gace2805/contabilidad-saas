@@ -6,14 +6,18 @@ import { TaxConfiguration } from './TaxConfiguration';
 import { Warehouses } from './Warehouses';
 import { Branches } from './Branches';
 import { UnitsOfMeasure } from './UnitsOfMeasure';
+import { ElectronicSignerSettings } from './ElectronicSignerSettings';
+import { AppearanceSettings } from './AppearanceSettings';
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<'documents' | 'payments' | 'taxes' | 'warehouses' | 'branches' | 'units'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'payments' | 'taxes' | 'warehouses' | 'branches' | 'units' | 'electronic-signer' | 'appearance'>('documents');
 
   const tabs = [
     { id: 'documents' as const, label: 'Tipos de Documento', component: DocumentTypes },
     { id: 'payments' as const, label: 'Formas de Pago', component: PaymentMethods },
-    { id: 'taxes' as const, label: 'Configuración de Impuestos', component: TaxConfiguration },
+    { id: 'taxes' as const, label: 'Tipos de Impuestos', component: TaxConfiguration },
+    { id: 'appearance' as const, label: 'Apariencia y Marca', component: AppearanceSettings },
+    { id: 'electronic-signer' as const, label: 'Firmador Electrónico', component: ElectronicSignerSettings },
     { id: 'warehouses' as const, label: 'Bodegas', component: Warehouses },
     { id: 'branches' as const, label: 'Sucursales', component: Branches },
     { id: 'units' as const, label: 'Unidades de Medida', component: UnitsOfMeasure },
@@ -33,7 +37,7 @@ export function Settings() {
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200">
         <div className="border-b border-slate-200">
-          <nav className="flex gap-1 p-2" aria-label="Tabs">
+          <nav className="flex gap-1 p-2 overflow-x-auto" aria-label="Tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.id}

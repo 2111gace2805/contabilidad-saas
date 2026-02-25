@@ -4,14 +4,88 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Support\AuditLogger;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
     private function getCompanyId(Request $request)
     {
         return $request->header('X-Company-Id');
+    }
+
+    private function generateNextCode(int $companyId): string
+    {
+        $max = Customer::where('company_id', $companyId)
+            ->pluck('code')
+            ->reduce(function (int $carry, ?string $code) {
+                $numeric = (int) preg_replace('/\D/', '', (string) $code);
+                return $numeric > $carry ? $numeric : $carry;
+            }, 0);
+
+        return str_pad((string) ($max + 1), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function normalizePayload(array $input): array
+    {
+        if (empty($input['name']) && !empty($input['nombre'])) {
+            $input['name'] = $input['nombre'];
+        }
+
+        if (!array_key_exists('business_name', $input) && array_key_exists('nombreComercial', $input)) {
+            $input['business_name'] = $input['nombreComercial'];
+        }
+
+        if (empty($input['email1']) && !empty($input['correo'])) {
+            $input['email1'] = $input['correo'];
+        }
+
+        if (empty($input['phone']) && !empty($input['telefono'])) {
+            $input['phone'] = $input['telefono'];
+        }
+
+        if (empty($input['economic_activity_id']) && !empty($input['codActividad'])) {
+            $input['economic_activity_id'] = (string) $input['codActividad'];
+        }
+
+        if ((!isset($input['address']) || trim((string) $input['address']) === '') && !empty($input['direccion']['complemento'])) {
+            $input['address'] = $input['direccion']['complemento'];
+        }
+
+        if (empty($input['depa_id']) && !empty($input['direccion']['departamento'])) {
+            $input['depa_id'] = (string) $input['direccion']['departamento'];
+        }
+
+        if (empty($input['municipality_id']) && !empty($input['direccion']['municipio'])) {
+            $muniRaw = (string) $input['direccion']['municipio'];
+
+            if (ctype_digit($muniRaw)) {
+                $muniCode = ltrim($muniRaw, '0');
+
+                $municipalityByCode = DB::table('municipalities')
+                    ->where('muni_id', $muniCode)
+                    ->when(!empty($input['depa_id']), fn($q) => $q->where('depa_id', (string) $input['depa_id']))
+                    ->value('id');
+
+                $input['municipality_id'] = $municipalityByCode ?: (int) $muniRaw;
+            }
+        }
+
+        if (empty($input['district_id']) && !empty($input['municipality_id'])) {
+            $districtId = DB::table('districts')
+                ->where('munidepa_id', (int) $input['municipality_id'])
+                ->orderBy('id')
+                ->value('id');
+
+            if ($districtId) {
+                $input['district_id'] = (int) $districtId;
+            }
+        }
+
+        return $input;
     }
 
     public function index(Request $request)
@@ -30,6 +104,7 @@ class CustomerController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
                   ->orWhere('business_name', 'like', "%{$search}%")
+                                    ->orWhere('nit', 'like', "%{$search}%")
                   ->orWhere('rfc', 'like', "%{$search}%")
                   ->orWhere('email1', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
@@ -50,12 +125,23 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Company ID required'], 400);
         }
 
-        $validator = Validator::make($request->all(), [
+        $input = $this->normalizePayload($request->all());
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+        if (empty($input['profile_type'])) {
+            $input['profile_type'] = 'juridical';
+        }
+        if (empty($input['code'])) {
+            $input['code'] = $this->generateNextCode((int) $companyId);
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:customers,code,NULL,id,company_id,' . $companyId,
+            'code' => 'nullable|string|max:50|unique:customers,code,NULL,id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
             'business_name' => 'nullable|string|max:255',
-            'profile_type' => 'required|in:natural,juridical',
+            'profile_type' => 'nullable|in:natural,juridical',
             'contact_name' => 'nullable|string|max:255',
             'email1' => 'required|email|max:255',
             'email2' => 'nullable|email|max:255',
@@ -66,7 +152,7 @@ class CustomerController extends Controller
             'credit_days' => 'nullable|integer|min:0',
             'active' => 'boolean',
             'customer_type_id' => 'nullable|exists:customer_types,id',
-            'economic_activity_id' => 'nullable|string|size:5',
+            'economic_activity_id' => 'nullable|string|max:10',
             'depa_id' => 'required|string|max:10',
             'municipality_id' => 'required|integer',
             'district_id' => 'required|integer',
@@ -83,12 +169,30 @@ class CustomerController extends Controller
         }
 
         $data = $validator->validated();
+        $data['profile_type'] = $data['profile_type'] ?? 'juridical';
+        $data['code'] = $data['code'] ?? $this->generateNextCode((int) $companyId);
         $data['company_id'] = $companyId;
+        if (!isset($data['rfc']) && isset($data['nit'])) {
+            $data['rfc'] = $data['nit'];
+        }
         $data['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente');
         $data['is_exento_iva'] = $request->boolean('is_exento_iva');
         $data['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva');
 
         $customer = Customer::create($data);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'customer.create',
+            'customer',
+            (string) $customer->id,
+            'Cliente creado',
+            [
+                'name' => $customer->name,
+                'nit' => $customer->nit,
+            ]
+        );
         
         return response()->json($customer, 201);
     }
@@ -110,12 +214,23 @@ class CustomerController extends Controller
         
         $customer = Customer::where('company_id', $companyId)->findOrFail($id);
         
-        $validator = Validator::make($request->all(), [
+        $input = $this->normalizePayload($request->all());
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+        if (empty($input['profile_type'])) {
+            $input['profile_type'] = $customer->profile_type ?: 'juridical';
+        }
+        if (empty($input['code'])) {
+            $input['code'] = $customer->code;
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'sometimes|required|string|max:255',
-            'code' => 'required|string|max:50|unique:customers,code,' . $id . ',id,company_id,' . $companyId,
+            'code' => 'nullable|string|max:50|unique:customers,code,' . $id . ',id,company_id,' . $companyId,
             'rfc' => 'nullable|string|max:50',
             'business_name' => 'nullable|string|max:255',
-            'profile_type' => 'required|in:natural,juridical',
+            'profile_type' => 'nullable|in:natural,juridical',
             'contact_name' => 'nullable|string|max:255',
             'email1' => 'sometimes|required|email|max:255',
             'email2' => 'nullable|email|max:255',
@@ -126,7 +241,7 @@ class CustomerController extends Controller
             'credit_days' => 'nullable|integer|min:0',
             'active' => 'boolean',
             'customer_type_id' => 'nullable|exists:customer_types,id',
-            'economic_activity_id' => 'nullable|string|size:5',
+            'economic_activity_id' => 'nullable|string|max:10',
             'depa_id' => 'required|string|max:10',
             'municipality_id' => 'required|integer',
             'district_id' => 'required|integer',
@@ -143,11 +258,29 @@ class CustomerController extends Controller
         }
 
         $validated = $validator->validated();
+        $validated['profile_type'] = $validated['profile_type'] ?? $customer->profile_type ?? 'juridical';
+        $validated['code'] = $validated['code'] ?? $customer->code;
+        if (!isset($validated['rfc']) && isset($validated['nit'])) {
+            $validated['rfc'] = $validated['nit'];
+        }
         $validated['is_gran_contribuyente'] = $request->boolean('is_gran_contribuyente', $customer->is_gran_contribuyente);
         $validated['is_exento_iva'] = $request->boolean('is_exento_iva', $customer->is_exento_iva);
         $validated['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva', $customer->is_no_sujeto_iva);
 
         $customer->update($validated);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'customer.update',
+            'customer',
+            (string) $customer->id,
+            'Cliente actualizado',
+            [
+                'name' => $customer->name,
+                'nit' => $customer->nit,
+            ]
+        );
         
         return response()->json($customer);
     }
@@ -157,8 +290,37 @@ class CustomerController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $customer = Customer::where('company_id', $companyId)->findOrFail($id);
-        
-        $customer->delete();
+
+        $hasInvoices = $customer->invoices()
+            ->where('company_id', $companyId)
+            ->exists();
+
+        if ($hasInvoices) {
+            return response()->json([
+                'message' => 'No se puede eliminar este cliente porque tiene transacciones procesadas.',
+            ], 422);
+        }
+
+        try {
+            $customer->delete();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'customer.delete',
+                'customer',
+                (string) $id,
+                'Cliente eliminado'
+            );
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este cliente porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Customer deleted successfully']);
     }

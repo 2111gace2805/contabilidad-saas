@@ -35,8 +35,14 @@ class SuperAdminController extends Controller
 
     public function createCompany(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
+            'nit' => 'nullable|string|max:20',
             'rfc' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
@@ -52,7 +58,12 @@ class SuperAdminController extends Controller
 
         DB::beginTransaction();
         try {
-            $company = Company::create($validator->validated());
+            $data = $validator->validated();
+            if (!isset($data['rfc']) && isset($data['nit'])) {
+                $data['rfc'] = $data['nit'];
+            }
+
+            $company = Company::create($data);
 
             if ($request->admin_user_id) {
                 DB::table('company_users')->insert([
@@ -123,8 +134,14 @@ class SuperAdminController extends Controller
     {
         $company = Company::findOrFail($id);
 
-        $validator = Validator::make($request->all(), [
+        $input = $request->all();
+        if (!isset($input['nit']) && isset($input['rfc'])) {
+            $input['nit'] = $input['rfc'];
+        }
+
+        $validator = Validator::make($input, [
             'name' => 'required|string|max:255',
+            'nit' => 'nullable|string|max:20',
             'rfc' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'phone' => 'nullable|string|max:20',
@@ -137,7 +154,12 @@ class SuperAdminController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $company->update($validator->validated());
+        $data = $validator->validated();
+        if (!isset($data['rfc']) && isset($data['nit'])) {
+            $data['rfc'] = $data['nit'];
+        }
+
+        $company->update($data);
 
         return response()->json($company);
     }

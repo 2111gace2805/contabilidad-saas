@@ -14,7 +14,9 @@ export interface User {
 export interface Company {
   id: number;
   name: string;
-  rfc: string;
+  nit: string | null;
+  rfc?: string | null;
+  nrc?: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;
@@ -155,7 +157,8 @@ export interface Customer {
   business_name?: string | null;
   profile_type?: 'natural' | 'juridical';
   contact_name?: string | null;
-  rfc: string | null;
+  nit: string | null;
+  rfc?: string | null;
   email?: string | null;
   email1?: string | null;
   email2?: string | null;
@@ -164,7 +167,6 @@ export interface Customer {
   address: string | null;
   credit_limit: string;
   credit_days: number;
-  nit?: string | null;
   nrc?: string | null;
   dui?: string | null;
   depa_id?: string | null;
@@ -185,7 +187,7 @@ export interface Supplier {
   company_id: number;
   code: string;
   name: string;
-  rfc: string | null;
+  nit: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
@@ -198,7 +200,8 @@ export interface Supplier {
 export interface Invoice {
   id: number;
   company_id: number;
-  customer_id: number;
+  customer_id: number | null;
+  payment_method_id?: number | null;
   invoice_number: string;
   invoice_date: string;
   due_date: string;
@@ -206,11 +209,33 @@ export interface Invoice {
   tax: string;
   total: string;
   balance: string;
-  status: 'draft' | 'pending' | 'paid' | 'void';
+  status: 'draft' | 'pending' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled' | 'issued';
   notes: string | null;
+  tipo_dte?: string | null;
+  dte_version?: number | null;
+  dte_ambiente?: string | null;
+  dte_numero_control?: string | null;
+  dte_codigo_generacion?: string | null;
+  dte_fec_emi?: string | null;
+  dte_hor_emi?: string | null;
+  dte_sello_recibido?: string | null;
+  dte_firma_electronica?: string | null;
+  dte_emisor?: Record<string, any> | null;
+  dte_receptor?: Record<string, any> | null;
+  dte_cuerpo_documento?: any[] | null;
+  dte_resumen?: Record<string, any> | null;
+  dte_apendice?: any[] | null;
+  dte_raw_json?: string | null;
+  customer_name_snapshot?: string | null;
+  customer_tax_id_snapshot?: string | null;
+  customer_phone_snapshot?: string | null;
+  customer_email_snapshot?: string | null;
+  customer_address_snapshot?: string | null;
+  is_fiscal_credit?: boolean;
   created_at: string;
   updated_at: string;
   customer?: Customer;
+  payment_method?: PaymentMethod;
   lines?: InvoiceLine[];
 }
 
@@ -229,7 +254,7 @@ export interface InvoiceLine {
 export interface Bill {
   id: number;
   company_id: number;
-  supplier_id: number;
+  supplier_id: number | null;
   bill_number: string;
   bill_date: string;
   due_date: string;
@@ -237,8 +262,29 @@ export interface Bill {
   tax: string;
   total: string;
   balance: string;
-  status: 'draft' | 'pending' | 'paid' | 'void';
+  status: 'draft' | 'pending' | 'received' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled';
   notes: string | null;
+  tipo_dte?: string | null;
+  dte_version?: number | null;
+  dte_ambiente?: string | null;
+  dte_numero_control?: string | null;
+  dte_codigo_generacion?: string | null;
+  dte_fec_emi?: string | null;
+  dte_hor_emi?: string | null;
+  dte_sello_recibido?: string | null;
+  dte_firma_electronica?: string | null;
+  dte_emisor?: Record<string, any> | null;
+  dte_receptor?: Record<string, any> | null;
+  dte_cuerpo_documento?: any[] | null;
+  dte_resumen?: Record<string, any> | null;
+  dte_apendice?: any[] | null;
+  dte_raw_json?: string | null;
+  supplier_name_snapshot?: string | null;
+  supplier_tax_id_snapshot?: string | null;
+  supplier_phone_snapshot?: string | null;
+  supplier_email_snapshot?: string | null;
+  supplier_address_snapshot?: string | null;
+  is_fiscal_credit?: boolean;
   created_at: string;
   updated_at: string;
   supplier?: Supplier;
@@ -260,13 +306,17 @@ export interface BillLine {
 export interface InventoryItem {
   id: number;
   company_id: number;
+  item_code?: string;
   code: string;
   name: string;
+  item_type?: 'bien' | 'servicio' | 'ambos';
   description: string | null;
   unit_of_measure: string;
   current_quantity: string;
   minimum_quantity: string;
   average_cost: string;
+  inventory_account_id?: number | null;
+  cogs_account_id?: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -294,8 +344,74 @@ export interface PaymentMethod {
   name: string;
   description: string | null;
   active: boolean;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface CompanyPreference {
+  id: number;
+  company_id: number;
+  primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
+  ui_theme_template?: 'default' | 'ocean' | 'emerald-midnight' | 'classic' | null;
+  ui_accent_color?: string | null;
+  ui_header_color?: string | null;
+  ui_sidebar_color?: string | null;
+  ui_background_color?: string | null;
+  ui_font_family?: 'inter' | 'system' | 'roboto' | 'open-sans' | 'lato' | null;
+  company_logo_png?: string | null;
+  dte_establishment_code?: string | null;
+  dte_point_of_sale_code?: string | null;
+  emisor_nombre_comercial?: string | null;
+  emisor_tipo_establecimiento?: string | null;
+  emisor_correo?: string | null;
+  emisor_cod_actividad?: string | null;
+  emisor_desc_actividad?: string | null;
+  emisor_departamento?: string | null;
+  emisor_municipio?: string | null;
+  emisor_distrito?: string | null;
+  emisor_direccion_complemento?: string | null;
+  emisor_cod_estable?: string | null;
+  emisor_cod_punto_venta?: string | null;
+  firmador_certificate_name?: string | null;
+  firmador_certificate_content?: string | null;
+  firmador_private_key_name?: string | null;
+  firmador_private_key_content?: string | null;
+  firmador_api_password?: string | null;
+  firmador_api_url?: string | null;
+  smtp_provider?: 'office365' | 'google' | 'zeptomail' | 'aws' | 'custom' | null;
+  smtp_url?: string | null;
+  smtp_api_key?: string | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_username?: string | null;
+  smtp_password?: string | null;
+  smtp_encryption?: 'tls' | 'ssl' | 'starttls' | 'none' | null;
+  smtp_region?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditLog {
+  id: number;
+  company_id: number | null;
+  user_id: number | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  description: string | null;
+  metadata?: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  company?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export interface DocumentType {

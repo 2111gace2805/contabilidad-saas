@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentType;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -92,8 +93,18 @@ class DocumentTypeController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $type = DocumentType::where('company_id', $companyId)->findOrFail($id);
-        
-        $type->delete();
+
+        try {
+            $type->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este tipo de documento porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Document type deleted successfully']);
     }

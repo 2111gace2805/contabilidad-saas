@@ -229,7 +229,7 @@ export default function JournalEntryTypes() {
                                     onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                                     className="w-4 h-4 rounded text-slate-900 focus:ring-slate-500"
                                 />
-                                <label htmlFor="active" className="text-sm font-medium text-slate-700">Tipo Activo</label>
+                                <label htmlFor="active" className="text-sm font-medium text-slate-700">Habilitado</label>
                             </div>
 
                             <div className="pt-4 flex gap-3">

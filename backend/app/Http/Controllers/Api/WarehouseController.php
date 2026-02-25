@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -102,8 +103,18 @@ class WarehouseController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $warehouse = Warehouse::where('company_id', $companyId)->findOrFail($id);
-        
-        $warehouse->delete();
+
+        try {
+            $warehouse->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar esta bodega porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Warehouse deleted successfully']);
     }

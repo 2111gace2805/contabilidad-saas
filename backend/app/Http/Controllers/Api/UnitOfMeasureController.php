@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitOfMeasure;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -102,8 +103,18 @@ class UnitOfMeasureController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $unitOfMeasure = UnitOfMeasure::where('company_id', $companyId)->findOrFail($id);
-        
-        $unitOfMeasure->delete();
+
+        try {
+            $unitOfMeasure->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar esta unidad de medida porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Unit of measure deleted successfully']);
     }

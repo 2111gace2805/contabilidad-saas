@@ -212,8 +212,8 @@ export function Dashboard() {
           <h3 className="text-lg font-bold text-slate-800 mb-4">Información de Empresa</h3>
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-slate-600">RFC</p>
-              <p className="font-medium text-slate-800">{selectedCompany.rfc}</p>
+              <p className="text-sm text-slate-600">NIT</p>
+              <p className="font-medium text-slate-800">{selectedCompany.nit || selectedCompany.rfc}</p>
             </div>
             <div>
               <p className="text-sm text-slate-600">Moneda</p>

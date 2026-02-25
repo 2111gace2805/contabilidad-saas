@@ -80,7 +80,7 @@ npm run dev
 - ✅ **Tipos de cuenta** - Activo, Pasivo, Capital, Ingresos, Gastos
 - ✅ **Segmentos contables** - Configurables por empresa
 - ✅ **Períodos fiscales** - Con cierre/apertura y restricciones
-- ✅ **Pólizas contables** - Diario, ingresos, egresos con validación
+- ✅ **Partidas contables** - Diario, ingresos, egresos con validación
 - ✅ **Clientes y CxC** - Gestión de cuentas por cobrar
 - ✅ **Proveedores y CxP** - Gestión de cuentas por pagar
 - ✅ **Facturas de venta** - Con posting automático
@@ -233,7 +233,7 @@ php artisan test
 
 ### Guías Funcionales
 - [CONFIGURACION_COMPLETA.md](backend/CONFIGURACION_COMPLETA.md) - Configuración del sistema
-- [FLUJO_POLIZAS.md](backend/FLUJO_POLIZAS.md) - Flujo de pólizas contables
+- [FLUJO_POLIZAS.md](backend/FLUJO_POLIZAS.md) - Flujo de partidas contables
 - [CONTROL_PERIODOS_FISCALES.md](backend/CONTROL_PERIODOS_FISCALES.md) - Períodos fiscales
 
 ---

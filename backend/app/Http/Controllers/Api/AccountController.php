@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -123,14 +124,24 @@ class AccountController extends Controller
         $account = Account::where('company_id', $companyId)->findOrFail($id);
         
         if ($account->children()->count() > 0) {
-            return response()->json(['message' => 'Cannot delete account with children'], 400);
+            return response()->json(['message' => 'No se puede eliminar esta cuenta porque tiene subcuentas asociadas.'], 422);
         }
         
         if ($account->journalEntryLines()->count() > 0) {
-            return response()->json(['message' => 'Cannot delete account with journal entries'], 400);
+            return response()->json(['message' => 'No se puede eliminar esta cuenta porque tiene transacciones procesadas.'], 422);
         }
-        
-        $account->delete();
+
+        try {
+            $account->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar esta cuenta porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Account deleted successfully']);
     }

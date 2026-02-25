@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ApiClient } from '../../lib/api';
-import { FileText, Download, Filter } from 'lucide-react';
+import { FileText, Filter, Download } from 'lucide-react';
 
 interface TrialBalanceItem {
   code: string;
@@ -88,6 +88,8 @@ type ReportType =
   | 'journal-book'
   | 'general-ledger'
   | 'account-ledger';
+
+type ExportFormat = 'excel' | 'csv' | 'json' | 'xml';
 
 export function Reports() {
   const { selectedCompany } = useCompany();
@@ -198,63 +200,31 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: accountsData, error: accountsError } = await supabase
-        .from('accounts')
-        .select(`
-          id,
-          code,
-          name,
-          level,
-          account_types!inner(code, affects_balance)
-        `)
-        .eq('company_id', selectedCompany.id)
-        .eq('active', true)
-        .eq('account_types.affects_balance', true)
-        .order('code');
-
-      if (accountsError) throw accountsError;
-
-      const { data: linesData, error: linesError } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          account_id,
-          debit,
-          credit,
-          journal_entries!inner(company_id, entry_date, status)
-        `)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .lte('journal_entries.entry_date', endDate);
-
-      if (linesError) throw linesError;
-
-      const accountBalances = new Map<string, number>();
-      linesData?.forEach((line: any) => {
-        const current = accountBalances.get(line.account_id) || 0;
-        accountBalances.set(line.account_id, current + Number(line.debit) - Number(line.credit));
-      });
+      const res = await ApiClient.get<any>(`/reports/balance-sheet?date=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? [] : (res?.balances ?? []);
 
       const assets: BalanceSheetItem[] = [];
       const liabilities: BalanceSheetItem[] = [];
       const equity: BalanceSheetItem[] = [];
 
-      accountsData?.forEach((account: any) => {
-        const balance = accountBalances.get(account.id) || 0;
+      payload.forEach((row: any) => {
+        const account = row.account ?? row.account_data ?? {};
+        const balance = Number(row.balance ?? 0);
         if (Math.abs(balance) < 0.01) return;
 
         const item: BalanceSheetItem = {
-          code: account.code,
-          name: account.name,
+          code: account.code ?? '',
+          name: account.name ?? '',
           amount: Math.abs(balance),
-          level: account.level,
+          level: Number(account.level ?? 1),
         };
 
-        const typeCode = account.account_types.code;
-        if (typeCode === 'ACTIVO') {
+        const typeCode = String(account.account_type?.code ?? account.accountType?.code ?? '').toUpperCase();
+        if (typeCode === 'ACTIVO' || typeCode === '1') {
           assets.push(item);
-        } else if (typeCode === 'PASIVO') {
+        } else if (typeCode === 'PASIVO' || typeCode === '2') {
           liabilities.push(item);
-        } else if (typeCode === 'CAPITAL') {
+        } else if (typeCode === 'CAPITAL' || typeCode === '3') {
           equity.push(item);
         }
       });
@@ -272,61 +242,28 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: accountsData, error: accountsError } = await supabase
-        .from('accounts')
-        .select(`
-          id,
-          code,
-          name,
-          level,
-          account_types!inner(code, affects_results)
-        `)
-        .eq('company_id', selectedCompany.id)
-        .eq('active', true)
-        .eq('account_types.affects_results', true)
-        .order('code');
-
-      if (accountsError) throw accountsError;
-
-      const { data: linesData, error: linesError } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          account_id,
-          debit,
-          credit,
-          journal_entries!inner(company_id, entry_date, status)
-        `)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .gte('journal_entries.entry_date', startDate)
-        .lte('journal_entries.entry_date', endDate);
-
-      if (linesError) throw linesError;
-
-      const accountBalances = new Map<string, number>();
-      linesData?.forEach((line: any) => {
-        const current = accountBalances.get(line.account_id) || 0;
-        accountBalances.set(line.account_id, current + Number(line.credit) - Number(line.debit));
-      });
+      const res = await ApiClient.get<any>(`/reports/income-statement?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? [] : (res?.balances ?? []);
 
       const revenue: BalanceSheetItem[] = [];
       const expenses: BalanceSheetItem[] = [];
 
-      accountsData?.forEach((account: any) => {
-        const balance = accountBalances.get(account.id) || 0;
+      payload.forEach((row: any) => {
+        const account = row.account ?? row.account_data ?? {};
+        const balance = Number(row.balance ?? 0);
         if (Math.abs(balance) < 0.01) return;
 
         const item: BalanceSheetItem = {
-          code: account.code,
-          name: account.name,
+          code: account.code ?? '',
+          name: account.name ?? '',
           amount: Math.abs(balance),
-          level: account.level,
+          level: Number(account.level ?? 1),
         };
 
-        const typeCode = account.account_types.code;
-        if (typeCode === 'INGRESOS') {
+        const typeCode = String(account.account_type?.code ?? account.accountType?.code ?? '').toUpperCase();
+        if (typeCode === 'INGRESOS' || typeCode === '4') {
           revenue.push(item);
-        } else if (typeCode === 'EGRESOS' || typeCode === 'COSTOS') {
+        } else if (typeCode === 'EGRESOS' || typeCode === 'COSTOS' || typeCode === '5' || typeCode === '6') {
           expenses.push(item);
         }
       });
@@ -344,35 +281,19 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('purchase_invoices')
-        .select(`
-          id,
-          invoice_date,
-          invoice_number,
-          subtotal,
-          tax_amount,
-          total,
-          suppliers(name, tax_id),
-          taxes(name)
-        `)
-        .eq('company_id', selectedCompany.id)
-        .gte('invoice_date', startDate)
-        .lte('invoice_date', endDate)
-        .order('invoice_date');
+      const res = await ApiClient.get<any>(`/reports/purchase-book?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? res : (res?.items ?? []);
 
-      if (error) throw error;
-
-      const items: PurchaseBookItem[] = data?.map((inv: any) => ({
+      const items: PurchaseBookItem[] = payload.map((inv: any) => ({
         invoice_date: inv.invoice_date,
         invoice_number: inv.invoice_number,
-        supplier_name: inv.suppliers?.name || 'N/A',
-        supplier_tax_id: inv.suppliers?.tax_id || 'N/A',
-        subtotal: Number(inv.subtotal),
-        tax_amount: Number(inv.tax_amount),
-        total: Number(inv.total),
-        tax_name: inv.taxes?.name || 'N/A',
-      })) || [];
+        supplier_name: inv.supplier_name || inv.supplier?.name || 'N/A',
+        supplier_tax_id: inv.supplier_tax_id || inv.supplier?.tax_id || 'N/A',
+        subtotal: Number(inv.subtotal ?? 0),
+        tax_amount: Number(inv.tax_amount ?? 0),
+        total: Number(inv.total ?? 0),
+        tax_name: inv.tax_name || 'IVA',
+      }));
 
       setPurchaseBook(items);
     } catch (error) {
@@ -387,35 +308,23 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('sale_invoices')
-        .select(`
-          id,
-          invoice_date,
-          invoice_number,
-          subtotal,
-          tax_amount,
-          total,
-          customers(name, tax_id),
-          taxes(name)
-        `)
-        .eq('company_id', selectedCompany.id)
-        .gte('invoice_date', startDate)
-        .lte('invoice_date', endDate)
-        .order('invoice_date');
+      const endpoint = reportType === 'sales-book-taxpayer'
+        ? '/reports/sales-book-taxpayer'
+        : '/reports/sales-book-consumer';
 
-      if (error) throw error;
+      const res = await ApiClient.get<any>(`${endpoint}?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? res : (res?.items ?? []);
 
-      const items: SalesBookItem[] = data?.map((inv: any) => ({
+      const items: SalesBookItem[] = payload.map((inv: any) => ({
         invoice_date: inv.invoice_date,
         invoice_number: inv.invoice_number,
-        customer_name: inv.customers?.name || 'N/A',
-        customer_tax_id: inv.customers?.tax_id || 'N/A',
-        subtotal: Number(inv.subtotal),
-        tax_amount: Number(inv.tax_amount),
-        total: Number(inv.total),
+        customer_name: inv.customer_name || inv.customers?.name || 'N/A',
+        customer_tax_id: inv.customer_tax_id || inv.customers?.tax_id || 'N/A',
+        subtotal: Number(inv.subtotal ?? 0),
+        tax_amount: Number(inv.tax_amount ?? 0),
+        total: Number(inv.total ?? 0),
         tax_name: inv.taxes?.name || 'N/A',
-      })) || [];
+      }));
 
       setSalesBook(items);
     } catch (error) {
@@ -430,51 +339,18 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: accountsData, error: accountsError } = await supabase
-        .from('accounts')
-        .select('id, code, name')
-        .eq('company_id', selectedCompany.id)
-        .eq('active', true)
-        .or('code.like.1101%,code.like.1102%');
+      const res = await ApiClient.get<any>(`/reports/cash-flow?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? res : (res?.items ?? []);
 
-      if (accountsError) throw accountsError;
-
-      const cashAccountIds = accountsData?.map(acc => acc.id) || [];
-
-      if (cashAccountIds.length === 0) {
-        setCashFlow([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data: linesData, error: linesError } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          account_id,
-          debit,
-          credit,
-          description,
-          journal_entries!inner(entry_date, entry_number, status, company_id),
-          accounts!inner(code, name)
-        `)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .in('account_id', cashAccountIds)
-        .gte('journal_entries.entry_date', startDate)
-        .lte('journal_entries.entry_date', endDate)
-        .order('journal_entries.entry_date');
-
-      if (linesError) throw linesError;
-
-      const items: CashFlowItem[] = linesData?.map((line: any) => ({
-        entry_date: line.journal_entries.entry_date,
-        entry_number: line.journal_entries.entry_number,
-        description: line.description || line.journal_entries.description || '',
-        account_code: line.accounts.code,
-        account_name: line.accounts.name,
-        inflow: Number(line.debit),
-        outflow: Number(line.credit),
-      })) || [];
+      const items: CashFlowItem[] = payload.map((line: any) => ({
+        entry_date: line.entry_date,
+        entry_number: line.entry_number,
+        description: line.description || '',
+        account_code: line.account_code || '',
+        account_name: line.account_name || '',
+        inflow: Number(line.inflow ?? 0),
+        outflow: Number(line.outflow ?? 0),
+      }));
 
       setCashFlow(items);
     } catch (error) {
@@ -489,33 +365,18 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: linesData, error } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          debit,
-          credit,
-          description,
-          journal_entries!inner(entry_date, entry_number, description, status, company_id),
-          accounts!inner(code, name)
-        `)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .gte('journal_entries.entry_date', startDate)
-        .lte('journal_entries.entry_date', endDate)
-        .order('journal_entries.entry_date')
-        .order('journal_entries.entry_number');
+      const res = await ApiClient.get<any>(`/reports/journal-book?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const payload = Array.isArray(res) ? res : (res?.items ?? []);
 
-      if (error) throw error;
-
-      const items: JournalBookItem[] = linesData?.map((line: any) => ({
-        entry_date: line.journal_entries.entry_date,
-        entry_number: line.journal_entries.entry_number,
-        description: line.description || line.journal_entries.description || '',
-        account_code: line.accounts.code,
-        account_name: line.accounts.name,
-        debit: Number(line.debit),
-        credit: Number(line.credit),
-      })) || [];
+      const items: JournalBookItem[] = payload.map((line: any) => ({
+        entry_date: line.entry_date,
+        entry_number: line.entry_number,
+        description: line.description || '',
+        account_code: line.account_code || '',
+        account_name: line.account_name || '',
+        debit: Number(line.debit ?? 0),
+        credit: Number(line.credit ?? 0),
+      }));
 
       setJournalBook(items);
     } catch (error) {
@@ -530,30 +391,15 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: linesData, error } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          account_id,
-          debit,
-          credit,
-          description,
-          journal_entries!inner(entry_date, entry_number, description, status, company_id),
-          accounts!inner(code, name)
-        `)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .gte('journal_entries.entry_date', startDate)
-        .lte('journal_entries.entry_date', endDate)
-        .order('accounts.code')
-        .order('journal_entries.entry_date')
-        .order('journal_entries.entry_number');
-
-      if (error) throw error;
+      const res = await ApiClient.get<any>(`/reports/journal-book?date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const linesData = Array.isArray(res) ? res : (res?.items ?? []);
 
       const ledgerMap = new Map<string, LedgerItem[]>();
 
       linesData?.forEach((line: any) => {
-        const accountKey = `${line.accounts.code}|${line.accounts.name}`;
+        const accountCode = line.account_code || '';
+        const accountName = line.account_name || '';
+        const accountKey = `${accountCode}|${accountName}`;
 
         if (!ledgerMap.has(accountKey)) {
           ledgerMap.set(accountKey, []);
@@ -566,9 +412,9 @@ export function Reports() {
         const balance = previousBalance + debit - credit;
 
         items.push({
-          entry_date: line.journal_entries.entry_date,
-          entry_number: line.journal_entries.entry_number,
-          description: line.description || line.journal_entries.description || '',
+          entry_date: line.entry_date,
+          entry_number: line.entry_number,
+          description: line.description || '',
           debit,
           credit,
           balance,
@@ -588,52 +434,25 @@ export function Reports() {
 
     setLoading(true);
     try {
-      const { data: accountData, error: accountError } = await supabase
-        .from('accounts')
-        .select('id, code, name')
-        .eq('id', selectedAccountId)
-        .maybeSingle();
-
-      if (accountError) throw accountError;
+      const accountData = accounts.find((a) => String(a.id) === String(selectedAccountId));
       if (!accountData) {
         setAccountLedger(null);
         setLoading(false);
         return;
       }
 
-      const { data: linesData, error: linesError } = await supabase
-        .from('journal_entry_lines')
-        .select(`
-          debit,
-          credit,
-          description,
-          journal_entries!inner(entry_date, entry_number, description, status, company_id)
-        `)
-        .eq('account_id', selectedAccountId)
-        .eq('journal_entries.company_id', selectedCompany.id)
-        .eq('journal_entries.status', 'posted')
-        .gte('journal_entries.entry_date', startDate)
-        .lte('journal_entries.entry_date', endDate)
-        .order('journal_entries.entry_date')
-        .order('journal_entries.entry_number');
-
-      if (linesError) throw linesError;
+      const res = await ApiClient.get<any>(`/reports/general-ledger?account_id=${encodeURIComponent(selectedAccountId)}&date_from=${encodeURIComponent(startDate)}&date_to=${encodeURIComponent(endDate)}`);
+      const linesData = Array.isArray(res) ? [] : (res?.transactions ?? []);
 
       const items: LedgerItem[] = [];
-      let balance = 0;
-
       linesData?.forEach((line: any) => {
-        const debit = Number(line.debit);
-        const credit = Number(line.credit);
-        balance += debit - credit;
-
         items.push({
-          entry_date: line.journal_entries.entry_date,
-          entry_number: line.journal_entries.entry_number,
-          description: line.description || line.journal_entries.description || '',
-          debit,
-          credit,
-          balance,
+          entry_date: line.date,
+          entry_number: line.entry_number,
+          description: line.description || '',
+          debit: Number(line.debit ?? 0),
+          credit: Number(line.credit ?? 0),
+          balance: Number(line.balance ?? 0),
         });
       });
 
@@ -675,6 +494,92 @@ export function Reports() {
       case 'account-ledger':
         loadAccountLedger();
         break;
+    }
+  };
+
+  const hasCurrentReportData = () => {
+    switch (reportType) {
+      case 'trial-balance': return trialBalance.length > 0;
+      case 'balance-sheet': return balanceSheet.assets.length > 0 || balanceSheet.liabilities.length > 0 || balanceSheet.equity.length > 0;
+      case 'income-statement': return incomeStatement.revenue.length > 0 || incomeStatement.expenses.length > 0;
+      case 'purchase-book': return purchaseBook.length > 0;
+      case 'sales-book-consumer':
+      case 'sales-book-taxpayer': return salesBook.length > 0;
+      case 'cash-flow': return cashFlow.length > 0;
+      case 'journal-book': return journalBook.length > 0;
+      case 'general-ledger': return generalLedger.size > 0;
+      case 'account-ledger': return (accountLedger?.items?.length ?? 0) > 0;
+      default: return false;
+    }
+  };
+
+  const resolveExportReport = () => {
+    if (reportType === 'account-ledger') return 'general-ledger';
+    return reportType;
+  };
+
+  const buildApiBase = () => {
+    const runtimeBase = import.meta.env.VITE_API_URL as string | undefined;
+    if (runtimeBase) return runtimeBase.endsWith('/') ? runtimeBase.slice(0, -1) : runtimeBase;
+    if (window.location.port === '5173') {
+      return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+    }
+    return `${window.location.origin}/api`;
+  };
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!selectedCompany) return;
+    if (!hasCurrentReportData()) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('No hay sesión activa para exportar.');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (startDate) params.append('date_from', startDate);
+      if (endDate) params.append('date_to', endDate);
+      if (reportType === 'trial-balance' && endDate) {
+        params.append('date', endDate);
+      }
+      if (reportType === 'balance-sheet' && endDate) {
+        params.append('date', endDate);
+      }
+      if (reportType === 'account-ledger' && selectedAccountId) {
+        params.append('account_id', selectedAccountId);
+      }
+
+      const report = resolveExportReport();
+      const base = buildApiBase();
+      const url = `${base}/reports/export/${report}/${format}${params.toString() ? `?${params.toString()}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: '*/*',
+          'X-Company-Id': String(selectedCompany.id),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const extension = format === 'excel' ? 'xls' : format;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${report}-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch (error: any) {
+      console.error('Error exporting report:', error);
+      alert('No se pudo exportar el reporte.');
     }
   };
 
@@ -749,6 +654,32 @@ export function Reports() {
               <FileText className="w-4 h-4" />
               {loading ? 'Generando...' : 'Generar'}
             </button>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-slate-600">Exportación disponible: Excel, CSV, JSON y XML.</p>
+            <div className="flex flex-wrap gap-2">
+              {(['excel', 'csv', 'json', 'xml'] as ExportFormat[]).map((format) => {
+                const enabled = hasCurrentReportData() && !loading;
+                return (
+                  <button
+                    key={format}
+                    onClick={() => handleExport(format)}
+                    disabled={!enabled}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border flex items-center gap-2 transition-colors ${enabled
+                      ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                      : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    title={enabled ? `Exportar ${format.toUpperCase()}` : 'Sin datos para exportar'}
+                  >
+                    <Download className="w-4 h-4" />
+                    {format.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -105,8 +106,18 @@ class BranchController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $branch = Branch::where('company_id', $companyId)->findOrFail($id);
-        
-        $branch->delete();
+
+        try {
+            $branch->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar esta sucursal porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Branch deleted successfully']);
     }

@@ -15,7 +15,7 @@ export function CompanyManagement() {
 
   const [formData, setFormData] = useState({
     name: '',
-    rfc: '',
+    nit: '',
     address: '',
     phone: '',
     email: '',
@@ -76,7 +76,7 @@ export function CompanyManagement() {
     try {
       await companiesApi.create({
         name: formData.name,
-        rfc: formData.rfc,
+        nit: formData.nit,
         address: formData.address || null,
         phone: formData.phone || null,
         email: formData.email || null,
@@ -86,7 +86,7 @@ export function CompanyManagement() {
       });
 
       setShowCreateModal(false);
-      setFormData({ name: '', rfc: '', address: '', phone: '', email: '', fiscal_year_start: 1, currency: 'MXN' });
+  setFormData({ name: '', nit: '', address: '', phone: '', email: '', fiscal_year_start: 1, currency: 'MXN' });
       loadAllCompanies();
       refreshCompanies();
       alert('Empresa creada exitosamente. Ahora debes configurar el catálogo contable.');
@@ -178,7 +178,7 @@ export function CompanyManagement() {
               <h3 className="text-lg font-bold text-slate-800 mb-2">{company.name}</h3>
 
               <div className="space-y-2 text-sm text-slate-600 mb-4">
-                <p><span className="font-medium">RFC:</span> {company.rfc}</p>
+                <p><span className="font-medium">NIT:</span> {company.nit || company.rfc}</p>
                 <p><span className="font-medium">Moneda:</span> {company.currency}</p>
                 <p><span className="font-medium">Ejercicio:</span> Mes {company.fiscal_year_start}</p>
               </div>
@@ -228,13 +228,13 @@ export function CompanyManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">RFC *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">NIT *</label>
                 <input
                   type="text"
-                  value={formData.rfc}
-                  onChange={(e) => setFormData({ ...formData, rfc: e.target.value })}
+                  value={formData.nit}
+                  onChange={(e) => setFormData({ ...formData, nit: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  placeholder="ABC123456XYZ"
+                  placeholder="0614-290980-102-3"
                 />
               </div>
 
@@ -291,7 +291,7 @@ export function CompanyManagement() {
               </button>
               <button
                 onClick={handleCreateCompany}
-                disabled={!formData.name || !formData.rfc}
+                disabled={!formData.name || !formData.nit}
                 className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Crear Empresa
