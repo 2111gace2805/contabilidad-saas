@@ -7,9 +7,10 @@ import {
   paymentMethods as paymentMethodsApi,
   companyPreferences as companyPreferencesApi,
 } from '../../lib/api';
-import { Plus, Save, X, Trash2, FileText } from 'lucide-react';
+import { Plus, Save, X, Trash2, Download, ChevronDown } from 'lucide-react';
 import type { Customer, Invoice, PaymentMethod } from '../../types';
 import { CustomerAutocomplete } from '../common/CustomerAutocomplete';
+import { InventoryItemAutocomplete, type InventoryItemOption } from '../common/InventoryItemAutocomplete';
 
 interface DocumentTypeOption {
   id: number;
@@ -43,6 +44,7 @@ interface InvoiceFormData {
 }
 
 interface SalesLineItem {
+  itemId: number | null;
   code: string;
   description: string;
   quantity: string;
@@ -84,6 +86,7 @@ export function Sales() {
   const [loading, setLoading] = useState(true);
   const [dteEstablishmentCode, setDteEstablishmentCode] = useState('M001');
   const [dtePointOfSaleCode, setDtePointOfSaleCode] = useState('P001');
+  const [openActionId, setOpenActionId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState<InvoiceFormData>(emptyForm);
@@ -200,12 +203,18 @@ export function Sales() {
     if (!Array.isArray(lines) || lines.length === 0) return [];
 
     return lines.map((line: any, index: number) => ({
+      itemId: null,
       code: String(line?.codigo ?? `ITEM-${index + 1}`),
       description: String(line?.descripcion ?? ''),
       quantity: String(line?.cantidad ?? '1'),
       unitPrice: String(line?.precioUni ?? line?.precioUnitario ?? '0.00'),
       tipoItem: String(line?.tipoItem ?? '1'),
     }));
+  };
+
+  const mapInventoryTypeToDte = (itemType?: string | null) => {
+    if (itemType === 'servicio') return '2';
+    return '1';
   };
 
   const mapEditorLinesToDte = (items: SalesLineItem[]) => {
@@ -253,7 +262,7 @@ export function Sales() {
   };
 
   const addLineItem = () => {
-    const next = [...lineItems, { code: '', description: '', quantity: '1', unitPrice: '0.00', tipoItem: '1' }];
+    const next = [...lineItems, { itemId: null, code: '', description: '', quantity: '1', unitPrice: '0.00', tipoItem: '1' }];
     setLineItems(next);
     recalculateFromLineItems(next);
   };
@@ -266,6 +275,30 @@ export function Sales() {
 
   const updateLineItem = (index: number, key: keyof SalesLineItem, value: string) => {
     const next = lineItems.map((item, idx) => (idx === index ? { ...item, [key]: value } : item));
+    setLineItems(next);
+    recalculateFromLineItems(next);
+  };
+
+  const handleSelectInventoryItem = (index: number, selected: InventoryItemOption | null) => {
+    if (!selected) {
+      const next = lineItems.map((item, idx) => (idx === index ? { ...item, itemId: null, code: '', tipoItem: '1' } : item));
+      setLineItems(next);
+      recalculateFromLineItems(next);
+      return;
+    }
+
+    const next = lineItems.map((item, idx) => {
+      if (idx !== index) return item;
+      return {
+        ...item,
+        itemId: selected.id,
+        code: selected.item_code || selected.code || item.code,
+        description: selected.name || item.description,
+        unitPrice: Number.isFinite(Number(selected.average_cost)) ? String(Number(selected.average_cost).toFixed(2)) : item.unitPrice,
+        tipoItem: mapInventoryTypeToDte(selected.item_type),
+      };
+    });
+
     setLineItems(next);
     recalculateFromLineItems(next);
   };
@@ -440,6 +473,70 @@ export function Sales() {
     }
   };
 
+  const handleDownloadJson = (invoice: Invoice) => {
+    const payload = invoice.dte_raw_json
+      ? (() => {
+          try {
+            return JSON.parse(invoice.dte_raw_json);
+          } catch {
+            return invoice;
+          }
+        })()
+      : invoice;
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${invoice.invoice_number || 'factura'}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = (invoice: Invoice) => {
+    const printable = window.open('', '_blank', 'width=900,height=700');
+    if (!printable) return;
+
+    printable.document.write(`
+      <html>
+        <head><title>${invoice.invoice_number}</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2>Factura de Venta</h2>
+          <p><strong>Número:</strong> ${invoice.invoice_number}</p>
+          <p><strong>Tipo DTE:</strong> ${invoice.tipo_dte || '-'}</p>
+          <p><strong>Cliente:</strong> ${invoice.customer?.name || invoice.customer_name_snapshot || '-'}</p>
+          <p><strong>Fecha:</strong> ${invoice.invoice_date}</p>
+          <p><strong>Total:</strong> $${formatAmount(invoice.total)}</p>
+          <p><strong>Estado:</strong> ${invoice.status}</p>
+          <hr/>
+          <p><small>Documento generado por sistema</small></p>
+        </body>
+      </html>
+    `);
+    printable.document.close();
+    printable.focus();
+    printable.print();
+  };
+
+  const handleMakePayment = async (invoice: Invoice) => {
+    if (invoice.status === 'paid') {
+      alert('La factura ya está pagada.');
+      return;
+    }
+
+    if (!confirm(`¿Marcar factura ${invoice.invoice_number} como pagada?`)) return;
+
+    try {
+      await invoicesApi.update(invoice.id, { status: 'paid', balance: '0.00' });
+      await loadData();
+    } catch (error: any) {
+      console.error('Error updating payment status:', error);
+      alert('No se pudo registrar el pago: ' + (error?.message || 'Error desconocido'));
+    }
+  };
+
   const handleEdit = (invoice: Invoice) => {
     setEditing(invoice);
     setLineItems(mapDteLinesToEditor(invoice.dte_cuerpo_documento || []));
@@ -542,17 +639,18 @@ export function Sales() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Fecha</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Total</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Estado</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-slate-700">Acciones</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-600">Cargando...</td>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-600">Cargando...</td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-600">No hay facturas registradas</td>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-600">No hay facturas registradas</td>
                 </tr>
               ) : (
                 invoices.map((invoice) => (
@@ -564,21 +662,88 @@ export function Sales() {
                     <td className="px-4 py-3 text-sm text-right font-medium text-slate-800">${formatAmount(invoice.total)}</td>
                     <td className="px-4 py-3 text-sm">{getStatusBadge(invoice.status)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleEdit(invoice)}
-                          className="text-slate-600 hover:text-slate-800"
-                          title="Editar"
+                          onClick={() => handleDownloadJson(invoice)}
+                          className="px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1"
                         >
-                          <FileText className="w-4 h-4" />
+                          <Download className="w-3 h-3" />
+                          JSON
                         </button>
                         <button
-                          onClick={() => handleDelete(invoice.id, invoice.invoice_number)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Eliminar"
+                          onClick={() => handleDownloadPdf(invoice)}
+                          className="px-2 py-1 text-xs border border-slate-300 rounded hover:bg-slate-50 flex items-center gap-1"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Download className="w-3 h-3" />
+                          PDF
                         </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="relative flex justify-end">
+                        <button
+                          onClick={() => setOpenActionId((prev) => (prev === invoice.id ? null : invoice.id))}
+                          className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm flex items-center gap-1"
+                        >
+                          Acción
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+
+                        {openActionId === invoice.id && (
+                          <div className="absolute right-0 top-10 z-20 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1">
+                            <button
+                              onClick={() => {
+                                handleEdit(invoice);
+                                setOpenActionId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                            >
+                              Ver
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleMakePayment(invoice);
+                                setOpenActionId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                            >
+                              Hacer el pago
+                            </button>
+                            <button
+                              onClick={() => {
+                                alert(invoice.status === 'paid' ? 'Factura pagada' : 'Factura pendiente de pago');
+                                setOpenActionId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50"
+                            >
+                              Ver pago
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await invoicesApi.update(invoice.id, { status: 'void' });
+                                  await loadData();
+                                } catch (error: any) {
+                                  alert('No se pudo anular: ' + (error?.message || 'Error desconocido'));
+                                } finally {
+                                  setOpenActionId(null);
+                                }
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              Anular
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete(invoice.id, invoice.invoice_number);
+                                setOpenActionId(null);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -841,13 +1006,11 @@ export function Sales() {
                     <table className="w-full">
                       <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Tipo</th>
-                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Código</th>
-                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Descripción</th>
+                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Producto / Servicio</th>
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Cant.</th>
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Precio</th>
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Total</th>
-                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Acción</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -859,34 +1022,14 @@ export function Sales() {
                           return (
                             <tr key={index}>
                               <td className="px-2 py-2">
-                                <select
-                                  value={item.tipoItem}
-                                  onChange={(e) => updateLineItem(index, 'tipoItem', e.target.value)}
-                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                                >
-                                  <option value="1">Producto</option>
-                                  <option value="2">Servicio</option>
-                                  <option value="3">Activo fijo</option>
-                                  <option value="4">Otro</option>
-                                </select>
-                              </td>
-                              <td className="px-2 py-2">
-                                <input
-                                  type="text"
-                                  value={item.code}
-                                  onChange={(e) => updateLineItem(index, 'code', e.target.value)}
-                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                                  placeholder="ITEM-001"
+                                <InventoryItemAutocomplete
+                                  value={item.itemId || ''}
+                                  textValue={item.description}
+                                  onTextChange={(value) => updateLineItem(index, 'description', value)}
+                                  onSelect={(selected) => handleSelectInventoryItem(index, selected)}
+                                  placeholder="Escribe para buscar ítem..."
                                 />
-                              </td>
-                              <td className="px-2 py-2">
-                                <input
-                                  type="text"
-                                  value={item.description}
-                                  onChange={(e) => updateLineItem(index, 'description', e.target.value)}
-                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
-                                  placeholder="Descripción del ítem"
-                                />
+                                {item.code && <p className="text-[10px] text-slate-500 mt-1">Código: {item.code}</p>}
                               </td>
                               <td className="px-2 py-2">
                                 <input

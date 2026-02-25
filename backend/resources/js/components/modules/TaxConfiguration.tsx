@@ -119,6 +119,8 @@ export function TaxConfiguration() {
       type: 'IVA',
       rate: 0,
       is_active: true,
+      debit_account_id: '',
+      credit_account_id: '',
     });
     setEditingTax(null);
   };
@@ -193,7 +195,7 @@ export function TaxConfiguration() {
             <tbody>
               {filteredTaxes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-500">
+                  <td colSpan={8} className="text-center py-8 text-slate-500">
                     No hay impuestos registrados
                   </td>
                 </tr>
@@ -336,6 +338,11 @@ export function TaxConfiguration() {
                 <label htmlFor="is_active" className="ml-2 text-sm text-slate-700">
                   Activo
                 </label>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200">
+                <p className="text-sm font-semibold text-slate-800 mb-2">Cuentas contables</p>
+                <p className="text-xs text-slate-500 mb-3">Asocia las cuentas para el registro automático del impuesto.</p>
               </div>
 
               <div>

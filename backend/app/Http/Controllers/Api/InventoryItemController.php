@@ -34,6 +34,13 @@ class InventoryItemController extends Controller
             });
         }
 
+        if ($request->filled('item_type')) {
+            $itemType = strtolower((string) $request->input('item_type'));
+            if (in_array($itemType, ['bien', 'servicio', 'ambos'], true)) {
+                $query->where('item_type', $itemType);
+            }
+        }
+
         $items = $query->orderBy('item_code')
             ->paginate($request->get('per_page', 15));
         
@@ -51,6 +58,7 @@ class InventoryItemController extends Controller
         $validator = Validator::make($request->all(), [
             'item_code' => 'required|string|max:50',
             'name' => 'required|string|max:255',
+            'item_type' => 'required|in:bien,servicio,ambos',
             'description' => 'nullable|string',
             'unit_of_measure' => 'required|string|max:20',
             'cost_method' => 'nullable|string|max:20',
@@ -113,6 +121,7 @@ class InventoryItemController extends Controller
         $validator = Validator::make($request->all(), [
             'item_code' => 'sometimes|required|string|max:50',
             'name' => 'sometimes|required|string|max:255',
+            'item_type' => 'sometimes|required|in:bien,servicio,ambos',
             'description' => 'nullable|string',
             'unit_of_measure' => 'sometimes|required|string|max:20',
             'cost_method' => 'nullable|string|max:20',

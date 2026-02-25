@@ -4,6 +4,18 @@ import { inventoryItems as inventoryApi, accounts as accountsApi } from '../../l
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import type { InventoryItem } from '../../types';
 
+interface InventoryFormData {
+  item_code: string;
+  name: string;
+  item_type: 'bien' | 'servicio' | 'ambos';
+  description: string;
+  unit_of_measure: string;
+  average_cost: string;
+  current_quantity: string;
+  inventory_account_id: string;
+  cogs_account_id: string;
+}
+
 export function Inventory() {
   const { selectedCompany } = useCompany();
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -11,9 +23,10 @@ export function Inventory() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InventoryFormData>({
     item_code: '',
     name: '',
+    item_type: 'bien',
     description: '',
     unit_of_measure: 'UNI',
     average_cost: '0',
@@ -71,6 +84,7 @@ export function Inventory() {
     setFormData({
       item_code: '',
       name: '',
+      item_type: 'bien',
       description: '',
       unit_of_measure: 'UNI',
       average_cost: '0',
@@ -85,6 +99,7 @@ export function Inventory() {
       const data = {
         item_code: formData.item_code,
         name: formData.name,
+        item_type: formData.item_type,
         description: formData.description || undefined,
         unit_of_measure: formData.unit_of_measure,
         average_cost: formData.average_cost,
@@ -115,6 +130,7 @@ export function Inventory() {
     setFormData({
       item_code: (item as any).item_code ?? item.code,
       name: item.name,
+      item_type: (item as any).item_type || 'bien',
       description: item.description || '',
       unit_of_measure: item.unit_of_measure,
       average_cost: String((item as any).average_cost ?? '0'),
@@ -152,7 +168,7 @@ export function Inventory() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800 mb-2">Inventario</h2>
-          <p className="text-slate-600">Gestión de productos y servicios</p>
+          <p className="text-slate-600">Gestión de bienes, servicios y ambos</p>
         </div>
         <button
           onClick={() => {
@@ -163,7 +179,7 @@ export function Inventory() {
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
         >
           <Plus className="w-5 h-5" />
-          Nuevo Producto
+          Nuevo Ítem
         </button>
       </div>
 
@@ -174,6 +190,7 @@ export function Inventory() {
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Código</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Nombre</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Tipo</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Unidad</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Costo</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Existencia</th>
@@ -183,13 +200,13 @@ export function Inventory() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-600">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-600">
                     Cargando...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-600">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-600">
                     No hay productos registrados
                   </td>
                 </tr>
@@ -198,6 +215,7 @@ export function Inventory() {
                   <tr key={item.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-800">{(item as any).item_code ?? item.code}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{item.name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700 capitalize">{(item as any).item_type || 'bien'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{item.unit_of_measure}</td>
                     <td className="px-4 py-3 text-sm text-right text-slate-800">${formatAmount((item as any).average_cost)}</td>
                     <td className="px-4 py-3 text-sm text-right text-slate-800">{formatAmount((item as any).current_quantity)}</td>
@@ -231,7 +249,7 @@ export function Inventory() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
             <h3 className="text-xl font-bold text-slate-800 mb-4">
-              {editing ? 'Editar Producto' : 'Nuevo Producto'}
+              {editing ? 'Editar Ítem' : 'Nuevo Ítem'}
             </h3>
 
             <div className="space-y-4">
@@ -268,6 +286,19 @@ export function Inventory() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   placeholder="Nombre del producto o servicio"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Ítem *</label>
+                <select
+                  value={formData.item_type}
+                  onChange={(e) => setFormData({ ...formData, item_type: e.target.value as 'bien' | 'servicio' | 'ambos' })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="bien">Bien (Producto)</option>
+                  <option value="servicio">Servicio</option>
+                  <option value="ambos">Ambos</option>
+                </select>
               </div>
 
               <div>

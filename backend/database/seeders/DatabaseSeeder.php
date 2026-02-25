@@ -147,6 +147,9 @@ class DatabaseSeeder extends Seeder
         // Seed customer types and economic activities
         $this->call(CustomerTypesSeeder::class);
         $this->call(EconomicActivitiesSeeder::class);
+
+        // Ensure a basic chart-of-accounts template exists for all companies
+        $this->call(BasicAccountingTemplateSeeder::class);
     }
 
     private function seedAccountTypes(Company $company): void

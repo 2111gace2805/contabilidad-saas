@@ -308,6 +308,7 @@ export interface InventoryItem {
   item_code?: string;
   code: string;
   name: string;
+  item_type?: 'bien' | 'servicio' | 'ambos';
   description: string | null;
   unit_of_measure: string;
   current_quantity: string;

@@ -14,7 +14,7 @@ export function Settings() {
   const tabs = [
     { id: 'documents' as const, label: 'Tipos de Documento', component: DocumentTypes },
     { id: 'payments' as const, label: 'Formas de Pago', component: PaymentMethods },
-    { id: 'taxes' as const, label: 'Configuración de Impuestos', component: TaxConfiguration },
+    { id: 'taxes' as const, label: 'Tipos de Impuestos', component: TaxConfiguration },
     { id: 'electronic-signer' as const, label: 'Firmador Electrónico', component: ElectronicSignerSettings },
     { id: 'warehouses' as const, label: 'Bodegas', component: Warehouses },
     { id: 'branches' as const, label: 'Sucursales', component: Branches },
