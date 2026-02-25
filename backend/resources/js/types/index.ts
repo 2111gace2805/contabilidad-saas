@@ -260,6 +260,7 @@ export interface BillLine {
 export interface InventoryItem {
   id: number;
   company_id: number;
+  item_code?: string;
   code: string;
   name: string;
   description: string | null;
@@ -267,6 +268,8 @@ export interface InventoryItem {
   current_quantity: string;
   minimum_quantity: string;
   average_cost: string;
+  inventory_account_id?: number | null;
+  cogs_account_id?: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ApiClient } from '../../lib/api';
-import { FileText, Filter } from 'lucide-react';
+import { FileText, Filter, Download } from 'lucide-react';
 
 interface TrialBalanceItem {
   code: string;
@@ -88,6 +88,8 @@ type ReportType =
   | 'journal-book'
   | 'general-ledger'
   | 'account-ledger';
+
+type ExportFormat = 'excel' | 'csv' | 'json' | 'xml';
 
 export function Reports() {
   const { selectedCompany } = useCompany();
@@ -495,6 +497,92 @@ export function Reports() {
     }
   };
 
+  const hasCurrentReportData = () => {
+    switch (reportType) {
+      case 'trial-balance': return trialBalance.length > 0;
+      case 'balance-sheet': return balanceSheet.assets.length > 0 || balanceSheet.liabilities.length > 0 || balanceSheet.equity.length > 0;
+      case 'income-statement': return incomeStatement.revenue.length > 0 || incomeStatement.expenses.length > 0;
+      case 'purchase-book': return purchaseBook.length > 0;
+      case 'sales-book-consumer':
+      case 'sales-book-taxpayer': return salesBook.length > 0;
+      case 'cash-flow': return cashFlow.length > 0;
+      case 'journal-book': return journalBook.length > 0;
+      case 'general-ledger': return generalLedger.size > 0;
+      case 'account-ledger': return (accountLedger?.items?.length ?? 0) > 0;
+      default: return false;
+    }
+  };
+
+  const resolveExportReport = () => {
+    if (reportType === 'account-ledger') return 'general-ledger';
+    return reportType;
+  };
+
+  const buildApiBase = () => {
+    const runtimeBase = import.meta.env.VITE_API_URL as string | undefined;
+    if (runtimeBase) return runtimeBase.endsWith('/') ? runtimeBase.slice(0, -1) : runtimeBase;
+    if (window.location.port === '5173') {
+      return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+    }
+    return `${window.location.origin}/api`;
+  };
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!selectedCompany) return;
+    if (!hasCurrentReportData()) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('No hay sesión activa para exportar.');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (startDate) params.append('date_from', startDate);
+      if (endDate) params.append('date_to', endDate);
+      if (reportType === 'trial-balance' && endDate) {
+        params.append('date', endDate);
+      }
+      if (reportType === 'balance-sheet' && endDate) {
+        params.append('date', endDate);
+      }
+      if (reportType === 'account-ledger' && selectedAccountId) {
+        params.append('account_id', selectedAccountId);
+      }
+
+      const report = resolveExportReport();
+      const base = buildApiBase();
+      const url = `${base}/reports/export/${report}/${format}${params.toString() ? `?${params.toString()}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: '*/*',
+          'X-Company-Id': String(selectedCompany.id),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const extension = format === 'excel' ? 'xls' : format;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${report}-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch (error: any) {
+      console.error('Error exporting report:', error);
+      alert('No se pudo exportar el reporte.');
+    }
+  };
+
   if (!selectedCompany) {
     return (
       <div className="p-8">
@@ -566,6 +654,32 @@ export function Reports() {
               <FileText className="w-4 h-4" />
               {loading ? 'Generando...' : 'Generar'}
             </button>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-200 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <p className="text-sm text-slate-600">Exportación disponible: Excel, CSV, JSON y XML.</p>
+            <div className="flex flex-wrap gap-2">
+              {(['excel', 'csv', 'json', 'xml'] as ExportFormat[]).map((format) => {
+                const enabled = hasCurrentReportData() && !loading;
+                return (
+                  <button
+                    key={format}
+                    onClick={() => handleExport(format)}
+                    disabled={!enabled}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border flex items-center gap-2 transition-colors ${enabled
+                      ? 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                      : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    title={enabled ? `Exportar ${format.toUpperCase()}` : 'Sin datos para exportar'}
+                  >
+                    <Download className="w-4 h-4" />
+                    {format.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

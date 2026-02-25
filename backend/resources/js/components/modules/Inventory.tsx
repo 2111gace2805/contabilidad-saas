@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
-import { inventoryItems as inventoryApi } from '../../lib/api';
-import { Package, Plus, Edit2, Trash2 } from 'lucide-react';
+import { inventoryItems as inventoryApi, accounts as accountsApi } from '../../lib/api';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import type { InventoryItem } from '../../types';
 
 export function Inventory() {
   const { selectedCompany } = useCompany();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [ledgerAccounts, setLedgerAccounts] = useState<Array<{ id: number; code: string; name: string; is_detail?: boolean }>>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState({
-    code: '',
+    item_code: '',
     name: '',
     description: '',
     unit_of_measure: 'UNI',
-    unit_cost: '0',
-    unit_price: '0',
+    average_cost: '0',
+    current_quantity: '0',
+    inventory_account_id: '',
+    cogs_account_id: '',
   });
 
   useEffect(() => {
@@ -30,9 +33,27 @@ export function Inventory() {
 
     setLoading(true);
     try {
-      const response = await inventoryApi.getAll();
-      const list = Array.isArray(response) ? response : (response.data || []);
+      const [response, accountsResponse] = await Promise.all([
+        inventoryApi.getAll(),
+        accountsApi.getAll(),
+      ]);
+
+      const list = Array.isArray(response)
+        ? response
+        : Array.isArray((response as any)?.data)
+          ? (response as any).data
+          : Array.isArray((response as any)?.data?.data)
+            ? (response as any).data.data
+            : [];
+
+      const accountList: any[] = Array.isArray(accountsResponse)
+        ? accountsResponse
+        : Array.isArray((accountsResponse as any)?.data)
+          ? (accountsResponse as any).data
+          : [];
+
       setItems(list);
+      setLedgerAccounts(accountList.filter((account: any) => account?.is_detail));
     } catch (error) {
       console.error('Error loading inventory:', error);
     } finally {
@@ -40,16 +61,37 @@ export function Inventory() {
     }
   };
 
+  const formatAmount = (value: any) => {
+    const numeric = Number(value ?? 0);
+    if (!Number.isFinite(numeric)) return '0.00';
+    return numeric.toFixed(2);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      item_code: '',
+      name: '',
+      description: '',
+      unit_of_measure: 'UNI',
+      average_cost: '0',
+      current_quantity: '0',
+      inventory_account_id: '',
+      cogs_account_id: '',
+    });
+  };
+
   const handleSave = async () => {
     try {
       const data = {
-        code: formData.code,
+        item_code: formData.item_code,
         name: formData.name,
         description: formData.description || undefined,
         unit_of_measure: formData.unit_of_measure,
-        unit_cost: formData.unit_cost,
-        unit_price: formData.unit_price,
-        is_active: true,
+        average_cost: formData.average_cost,
+        current_quantity: formData.current_quantity,
+        inventory_account_id: formData.inventory_account_id ? Number(formData.inventory_account_id) : null,
+        cogs_account_id: formData.cogs_account_id ? Number(formData.cogs_account_id) : null,
+        active: true,
       };
 
       if (editing) {
@@ -60,7 +102,7 @@ export function Inventory() {
 
       setShowModal(false);
       setEditing(null);
-      setFormData({ code: '', name: '', description: '', unit_of_measure: 'UNI', unit_cost: '0', unit_price: '0' });
+      resetForm();
       loadItems();
     } catch (error: any) {
       console.error('Error saving item:', error);
@@ -71,12 +113,14 @@ export function Inventory() {
   const handleEdit = (item: InventoryItem) => {
     setEditing(item);
     setFormData({
-      code: item.code,
+      item_code: (item as any).item_code ?? item.code,
       name: item.name,
       description: item.description || '',
       unit_of_measure: item.unit_of_measure,
-      unit_cost: item.unit_cost,
-      unit_price: item.unit_price,
+      average_cost: String((item as any).average_cost ?? '0'),
+      current_quantity: String((item as any).current_quantity ?? '0'),
+      inventory_account_id: (item as any).inventory_account_id ? String((item as any).inventory_account_id) : '',
+      cogs_account_id: (item as any).cogs_account_id ? String((item as any).cogs_account_id) : '',
     });
     setShowModal(true);
   };
@@ -113,7 +157,7 @@ export function Inventory() {
         <button
           onClick={() => {
             setEditing(null);
-            setFormData({ code: '', name: '', description: '', unit_of_measure: 'UNI', unit_cost: '0', unit_price: '0' });
+            resetForm();
             setShowModal(true);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
@@ -132,7 +176,7 @@ export function Inventory() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Nombre</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">Unidad</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Costo</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Precio</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Existencia</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-slate-700">Acciones</th>
               </tr>
             </thead>
@@ -152,11 +196,11 @@ export function Inventory() {
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{item.code}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-800">{(item as any).item_code ?? item.code}</td>
                     <td className="px-4 py-3 text-sm text-slate-800">{item.name}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{item.unit_of_measure}</td>
-                    <td className="px-4 py-3 text-sm text-right text-slate-800">${parseFloat(item.unit_cost).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-slate-800">${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-right text-slate-800">${formatAmount((item as any).average_cost)}</td>
+                    <td className="px-4 py-3 text-sm text-right text-slate-800">{formatAmount((item as any).current_quantity)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
                         <button
@@ -196,8 +240,8 @@ export function Inventory() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Código *</label>
                   <input
                     type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    value={formData.item_code}
+                    onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                     placeholder="PROD001"
                   />
@@ -244,24 +288,58 @@ export function Inventory() {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.unit_cost}
-                    onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
+                    value={formData.average_cost}
+                    onChange={(e) => setFormData({ ...formData, average_cost: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                     placeholder="0.00"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Precio de Venta</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Existencia Actual</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.unit_price}
-                    onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
+                    value={formData.current_quantity}
+                    onChange={(e) => setFormData({ ...formData, current_quantity: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                     placeholder="0.00"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta de Inventario</label>
+                  <select
+                    value={formData.inventory_account_id}
+                    onChange={(e) => setFormData({ ...formData, inventory_account_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">Seleccionar cuenta...</option>
+                    {ledgerAccounts.map((account) => (
+                      <option key={account.id} value={String(account.id)}>
+                        {account.code} - {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Cuenta de Costo de Venta</label>
+                  <select
+                    value={formData.cogs_account_id}
+                    onChange={(e) => setFormData({ ...formData, cogs_account_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="">Seleccionar cuenta...</option>
+                    {ledgerAccounts.map((account) => (
+                      <option key={account.id} value={String(account.id)}>
+                        {account.code} - {account.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -271,7 +349,7 @@ export function Inventory() {
                 onClick={() => {
                   setShowModal(false);
                   setEditing(null);
-                  setFormData({ code: '', name: '', description: '', unit_of_measure: 'UNI', unit_cost: '0', unit_price: '0' });
+                  resetForm();
                 }}
                 className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
               >

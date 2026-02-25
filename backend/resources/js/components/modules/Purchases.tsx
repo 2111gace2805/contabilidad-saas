@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { bills as billsApi, suppliers as suppliersApi } from '../../lib/api';
-import { Plus, Save, X, ShoppingCart, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Save, X, Upload, Trash2, Edit2 } from 'lucide-react';
 import type { Bill, Supplier } from '../../types';
 
 interface BillFormData {
@@ -34,6 +34,7 @@ export function Purchases() {
   const [showModal, setShowModal] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [formData, setFormData] = useState<BillFormData>(emptyForm);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (selectedCompany) {
@@ -128,6 +129,126 @@ export function Purchases() {
     } catch (error: any) {
       console.error('Error saving bill:', error);
       alert('Error al guardar: ' + (error?.message || 'Error desconocido'));
+    }
+  };
+
+  const normalizeDate = (value: any) => {
+    if (!value) return new Date().toISOString().split('T')[0];
+    const raw = String(value);
+    const dateOnly = raw.includes('T') ? raw.split('T')[0] : raw;
+    const parsed = new Date(dateOnly);
+    if (Number.isNaN(parsed.getTime())) return new Date().toISOString().split('T')[0];
+    return parsed.toISOString().split('T')[0];
+  };
+
+  const plusDays = (date: string, days: number) => {
+    const parsed = new Date(date);
+    parsed.setDate(parsed.getDate() + days);
+    return parsed.toISOString().split('T')[0];
+  };
+
+  const pickValue = (obj: any, paths: string[]) => {
+    for (const path of paths) {
+      const value = path.split('.').reduce((acc: any, segment) => acc?.[segment], obj);
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return value;
+      }
+    }
+    return '';
+  };
+
+  const parseAmount = (value: any) => {
+    const numeric = Number(value ?? 0);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
+  const handleImportJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      const supplierName = String(pickValue(parsed, [
+        'emisor.nombre',
+        'emisor.razonSocial',
+        'supplier.name',
+        'proveedor.nombre',
+      ]) || '').trim();
+
+      const supplierTaxId = String(pickValue(parsed, [
+        'emisor.nit',
+        'emisor.rfc',
+        'supplier.rfc',
+        'supplier.nit',
+        'proveedor.rfc',
+      ]) || '').trim();
+
+      const matchedSupplier = suppliers.find((supplier) => {
+        const byTaxId = supplierTaxId && [supplier.rfc || ''].some((id) => id?.toLowerCase() === supplierTaxId.toLowerCase());
+        const byName = supplierName && supplier.name.toLowerCase() === supplierName.toLowerCase();
+        return byTaxId || byName;
+      });
+
+      const billDate = normalizeDate(pickValue(parsed, [
+        'fechaEmision',
+        'identificacion.fecEmi',
+        'bill_date',
+        'fecha',
+      ]));
+
+      const subtotalAmount = parseAmount(pickValue(parsed, [
+        'resumen.subTotal',
+        'resumen.subtotal',
+        'resumen.totalGravada',
+        'resumen.subTotalVentas',
+        'subtotal',
+      ]));
+
+      const taxAmount = parseAmount(pickValue(parsed, [
+        'resumen.totalIva',
+        'resumen.iva',
+        'resumen.tributos.0.valor',
+        'tax',
+      ]));
+
+      const totalAmountRaw = pickValue(parsed, [
+        'resumen.montoTotalOperacion',
+        'resumen.totalPagar',
+        'resumen.total',
+        'total',
+      ]);
+
+      const totalAmount = parseAmount(totalAmountRaw || subtotalAmount + taxAmount);
+
+      setFormData((current) => ({
+        ...current,
+        supplier_id: matchedSupplier ? String(matchedSupplier.id) : current.supplier_id,
+        bill_number: String(pickValue(parsed, [
+          'numeroControl',
+          'identificacion.numeroControl',
+          'numeroDocumento',
+          'bill_number',
+        ]) || current.bill_number),
+        bill_date: billDate,
+        due_date: plusDays(billDate, matchedSupplier?.credit_days || 30),
+        subtotal: subtotalAmount.toFixed(2),
+        tax: taxAmount.toFixed(2),
+        total: totalAmount.toFixed(2),
+        notes: current.notes || `Importado desde JSON: ${file.name}`,
+      }));
+
+      if (!matchedSupplier) {
+        alert('JSON importado. No se encontró proveedor exacto; selecciona uno manualmente.');
+      }
+    } catch (error) {
+      console.error('Error importing JSON:', error);
+      alert('No se pudo importar el JSON. Verifica el formato del archivo.');
+    } finally {
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
     }
   };
 
@@ -285,9 +406,26 @@ export function Purchases() {
               <h3 className="text-xl font-bold text-slate-800">
                 {editingBill ? 'Editar Factura de Compra' : 'Nueva Factura de Compra'}
               </h3>
-              <button onClick={handleCancel} className="text-slate-400 hover:text-slate-600">
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={handleImportJson}
+                />
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  className="px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center gap-2"
+                  title="Importar JSON"
+                >
+                  <Upload className="w-4 h-4" />
+                  Importar JSON
+                </button>
+                <button onClick={handleCancel} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4">
