@@ -362,6 +362,7 @@ export interface CompanyPreference {
   emisor_desc_actividad?: string | null;
   emisor_departamento?: string | null;
   emisor_municipio?: string | null;
+  emisor_distrito?: string | null;
   emisor_direccion_complemento?: string | null;
   emisor_cod_estable?: string | null;
   emisor_cod_punto_venta?: string | null;

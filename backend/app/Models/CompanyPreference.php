@@ -21,6 +21,7 @@ class CompanyPreference extends Model
         'emisor_desc_actividad',
         'emisor_departamento',
         'emisor_municipio',
+        'emisor_distrito',
         'emisor_direccion_complemento',
         'emisor_cod_estable',
         'emisor_cod_punto_venta',

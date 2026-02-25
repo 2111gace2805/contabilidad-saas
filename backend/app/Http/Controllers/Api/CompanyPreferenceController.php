@@ -57,6 +57,7 @@ class CompanyPreferenceController extends Controller
             'emisor_desc_actividad' => 'nullable|string|max:255',
             'emisor_departamento' => 'nullable|string|max:10',
             'emisor_municipio' => 'nullable|string|max:10',
+            'emisor_distrito' => 'nullable|string|max:10',
             'emisor_direccion_complemento' => 'nullable|string',
             'emisor_cod_estable' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
             'emisor_cod_punto_venta' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],

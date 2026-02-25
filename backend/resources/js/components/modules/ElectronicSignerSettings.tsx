@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { catalogs, companies, companyPreferences } from '../../lib/api';
+import { EconomicActivityAutocomplete } from '../common/EconomicActivityAutocomplete';
 
 type SignerTab = 'general' | 'cert' | 'smtp';
 
@@ -20,6 +21,7 @@ interface FormState {
   emisor_desc_actividad: string;
   emisor_departamento: string;
   emisor_municipio: string;
+  emisor_distrito: string;
   emisor_direccion_complemento: string;
   emisor_cod_estable: string;
   emisor_cod_punto_venta: string;
@@ -56,6 +58,7 @@ const defaultForm = (): FormState => ({
   emisor_desc_actividad: '',
   emisor_departamento: '',
   emisor_municipio: '',
+  emisor_distrito: '',
   emisor_direccion_complemento: '',
   emisor_cod_estable: 'M001',
   emisor_cod_punto_venta: 'P001',
@@ -92,6 +95,7 @@ export function ElectronicSignerSettings() {
   const [form, setForm] = useState<FormState>(defaultForm);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [municipalities, setMunicipalities] = useState<Array<{ id: number; name: string }>>([]);
+  const [districts, setDistricts] = useState<Array<{ id: number; name: string }>>([]);
   const [economicActivities, setEconomicActivities] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -123,6 +127,13 @@ export function ElectronicSignerSettings() {
       }
       setMunicipalities((municipalitiesData || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
 
+      const muniId = String(data.emisor_municipio || '');
+      let districtsData: any[] = [];
+      if (muniId) {
+        districtsData = await catalogs.getDistricts({ municipality_id: muniId });
+      }
+      setDistricts((districtsData || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
+
       setForm({
         company_name: selectedCompany?.name || '',
         company_nit: selectedCompany?.nit || selectedCompany?.rfc || '',
@@ -139,6 +150,7 @@ export function ElectronicSignerSettings() {
         emisor_desc_actividad: data.emisor_desc_actividad || selectedActivity?.name || '',
         emisor_departamento: depaId,
         emisor_municipio: String(data.emisor_municipio || ''),
+        emisor_distrito: String(data.emisor_distrito || ''),
         emisor_direccion_complemento: data.emisor_direccion_complemento || selectedCompany?.address || '',
         emisor_cod_estable: data.emisor_cod_estable || data.dte_establishment_code || 'M001',
         emisor_cod_punto_venta: data.emisor_cod_punto_venta || data.dte_point_of_sale_code || 'P001',
@@ -254,6 +266,7 @@ export function ElectronicSignerSettings() {
         emisor_desc_actividad: form.emisor_desc_actividad || null,
         emisor_departamento: form.emisor_departamento || null,
         emisor_municipio: form.emisor_municipio || null,
+        emisor_distrito: form.emisor_distrito || null,
         emisor_direccion_complemento: form.emisor_direccion_complemento || null,
         emisor_cod_estable: form.emisor_cod_estable || form.dte_establishment_code || null,
         emisor_cod_punto_venta: form.emisor_cod_punto_venta || form.dte_point_of_sale_code || null,
@@ -380,36 +393,18 @@ export function ElectronicSignerSettings() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Cod. Actividad</label>
-                  <select
-                    value={form.emisor_cod_actividad}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      const selected = economicActivities.find((item) => item.id === code);
-                      setForm({ ...form, emisor_cod_actividad: code, emisor_desc_actividad: selected?.name || '' });
-                    }}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  >
-                    <option value="">Seleccionar...</option>
-                    {economicActivities.map((activity) => (
-                      <option key={activity.id} value={activity.id}>{activity.id}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Desc. Actividad</label>
-                  <input
-                    type="text"
-                    value={form.emisor_desc_actividad}
-                    onChange={(e) => setForm({ ...form, emisor_desc_actividad: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Actividad económica / Giro</label>
+                <EconomicActivityAutocomplete
+                  value={form.emisor_cod_actividad}
+                  onChange={(id) => {
+                    const selected = economicActivities.find((item) => item.id === id);
+                    setForm((prev) => ({ ...prev, emisor_cod_actividad: id, emisor_desc_actividad: selected?.name || '' }));
+                  }}
+                />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
                   <select
@@ -418,7 +413,8 @@ export function ElectronicSignerSettings() {
                       const depa = e.target.value;
                       const muni = depa ? await catalogs.getMunicipalities({ depa_id: depa }) : [];
                       setMunicipalities((muni || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
-                      setForm({ ...form, emisor_departamento: depa, emisor_municipio: '' });
+                      setDistricts([]);
+                      setForm({ ...form, emisor_departamento: depa, emisor_municipio: '', emisor_distrito: '' });
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   >
@@ -432,12 +428,31 @@ export function ElectronicSignerSettings() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Municipio</label>
                   <select
                     value={form.emisor_municipio}
-                    onChange={(e) => setForm({ ...form, emisor_municipio: e.target.value })}
+                    onChange={async (e) => {
+                      const municipalityId = e.target.value;
+                      const districtList = municipalityId ? await catalogs.getDistricts({ municipality_id: municipalityId }) : [];
+                      setDistricts((districtList || []).map((item: any) => ({ id: Number(item.id), name: String(item.name) })));
+                      setForm({ ...form, emisor_municipio: municipalityId, emisor_distrito: '' });
+                    }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   >
                     <option value="">Seleccionar...</option>
                     {municipalities.map((mun) => (
                       <option key={mun.id} value={String(mun.id)}>{mun.id} - {mun.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Distrito</label>
+                  <select
+                    value={form.emisor_distrito}
+                    onChange={(e) => setForm({ ...form, emisor_distrito: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    disabled={!form.emisor_municipio}
+                  >
+                    <option value="">Seleccionar...</option>
+                    {districts.map((dist) => (
+                      <option key={dist.id} value={String(dist.id)}>{dist.id} - {dist.name}</option>
                     ))}
                   </select>
                 </div>
