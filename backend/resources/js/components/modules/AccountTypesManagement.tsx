@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ApiClient } from '../../lib/api';
-import { Plus, Edit2, Trash2, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag, X } from 'lucide-react';
 import { Card } from '../common/Card';
 import { DataTable } from '../common/DataTable';
 
@@ -15,9 +15,9 @@ interface AccountType {
   id: number;
   code: string;
   name: string;
-  category?: string;
-  normal_balance: 'debit' | 'credit';
-  nature?: string; // backend uses 'nature' as 'deudora'|'acreedora'
+  nature: 'deudora' | 'acreedora';
+  affects_balance?: boolean;
+  affects_results?: boolean;
 }
 
 export function AccountTypesManagement() {
@@ -29,8 +29,9 @@ export function AccountTypesManagement() {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    category: 'asset' as 'asset' | 'liability' | 'equity' | 'revenue' | 'expense',
-    normal_balance: 'debit' as 'debit' | 'credit',
+    nature: 'deudora' as 'deudora' | 'acreedora',
+    affects_balance: true,
+    affects_results: false,
   });
 
   useEffect(() => {
@@ -55,14 +56,18 @@ export function AccountTypesManagement() {
   };
 
   const handleSave = async () => {
+    if (!formData.code.trim() || !formData.name.trim()) {
+      alert('Código y nombre son obligatorios');
+      return;
+    }
+
     try {
-      // Map frontend fields to backend expected fields
       const payload: any = {
-        code: formData.code,
-        name: formData.name,
-        nature: formData.normal_balance === 'debit' ? 'deudora' : 'acreedora',
-        affects_balance: true,
-        affects_results: formData.category === 'revenue' || formData.category === 'expense',
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        nature: formData.nature,
+        affects_balance: formData.affects_balance,
+        affects_results: formData.affects_results,
       };
 
       if (editing) {
@@ -73,7 +78,7 @@ export function AccountTypesManagement() {
 
       setShowModal(false);
       setEditing(null);
-      setFormData({ code: '', name: '', category: 'asset', normal_balance: 'debit' });
+      setFormData({ code: '', name: '', nature: 'deudora', affects_balance: true, affects_results: false });
       loadAccountTypes();
     } catch (error: any) {
       console.error('Error saving account type:', error);
@@ -93,8 +98,9 @@ export function AccountTypesManagement() {
     setFormData({
       code: type.code,
       name: type.name,
-      category: (type.category as any) || 'asset',
-      normal_balance: type.nature === 'deudora' ? 'debit' : 'credit',
+      nature: type.nature || 'deudora',
+      affects_balance: Boolean(type.affects_balance),
+      affects_results: Boolean(type.affects_results),
     });
     setShowModal(true);
   };
@@ -111,15 +117,8 @@ export function AccountTypesManagement() {
     }
   };
 
-  const getCategoryLabel = (category: string) => {
-    const labels: any = {
-      asset: 'Activo',
-      liability: 'Pasivo',
-      equity: 'Patrimonio',
-      revenue: 'Ingreso',
-      expense: 'Gasto',
-    };
-    return labels[category] || category;
+  const getNatureLabel = (nature: string) => {
+    return nature === 'deudora' ? 'Deudora' : 'Acreedora';
   };
 
   if (!selectedCompany) {
@@ -134,13 +133,17 @@ export function AccountTypesManagement() {
 
   return (
     <div className="p-6 bg-slate-50 min-h-screen">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Gestión de Tipos de Partida</h1>
+      <h1 className="text-2xl font-bold text-slate-800 mb-6">Gestión de Tipos de Cuenta</h1>
       <Card
-        title="Lista de Tipos de Partida"
+        title="Lista de Tipos de Cuenta"
         headerRight={
           <button
             className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditing(null);
+              setFormData({ code: '', name: '', nature: 'deudora', affects_balance: true, affects_results: false });
+              setShowModal(true);
+            }}
           >
             <Plus className="w-5 h-5 inline-block mr-2" /> Nuevo Tipo
           </button>
@@ -150,8 +153,7 @@ export function AccountTypesManagement() {
           columns={[
             { key: 'code', label: 'Código' },
             { key: 'name', label: 'Nombre' },
-            { key: 'category', label: 'Categoría' },
-            { key: 'normal_balance', label: 'Balance Normal' },
+            { key: 'nature', label: 'Naturaleza' },
             { key: 'actions', label: 'Acciones' },
           ]}
         >
@@ -159,14 +161,13 @@ export function AccountTypesManagement() {
             <tr key={type.id} className="hover:bg-slate-50">
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.code}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.name}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{getCategoryLabel(type.category || '')}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{type.normal_balance}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{getNatureLabel(type.nature)}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                 <div className="flex items-center gap-2">
-                  <button className="text-blue-600 hover:text-blue-800" title="Editar" onClick={() => setEditing(type)}>
+                  <button className="text-blue-600 hover:text-blue-800" title="Editar" onClick={() => handleEdit(type)}>
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button className="text-red-600 hover:text-red-800" title="Eliminar" onClick={() => console.log('Eliminar', type)}>
+                  <button className="text-red-600 hover:text-red-800" title="Eliminar" onClick={() => handleDelete(type.id, type.name)}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -175,6 +176,98 @@ export function AccountTypesManagement() {
           ))}
         </DataTable>
       </Card>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-800">{editing ? 'Editar Tipo de Cuenta' : 'Nuevo Tipo de Cuenta'}</h3>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditing(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Código *</label>
+                <input
+                  type="text"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="Ej. 1, 2, 3..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  placeholder="Ej. Activo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Naturaleza *</label>
+                <select
+                  value={formData.nature}
+                  onChange={(e) => setFormData({ ...formData, nature: e.target.value as 'deudora' | 'acreedora' })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                >
+                  <option value="deudora">Deudora</option>
+                  <option value="acreedora">Acreedora</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.affects_balance}
+                    onChange={(e) => setFormData({ ...formData, affects_balance: e.target.checked })}
+                  />
+                  Afecta balance
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.affects_results}
+                    onChange={(e) => setFormData({ ...formData, affects_results: e.target.checked })}
+                  />
+                  Afecta resultados
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setEditing(null);
+                }}
+                className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

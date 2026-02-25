@@ -78,32 +78,49 @@ export function InventoryItemAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const normalizeList = (data: any) => {
+    const list = Array.isArray(data)
+      ? data
+      : Array.isArray((data as any)?.data)
+        ? (data as any).data
+        : Array.isArray((data as any)?.data?.data)
+          ? (data as any).data.data
+          : [];
+
+    return list
+      .filter((item: any) => item.active !== false)
+      .map((item: any) => ({
+        id: Number(item.id),
+        item_code: item.item_code,
+        code: item.code,
+        name: item.name,
+        average_cost: Number(item.average_cost ?? 0),
+        item_type: item.item_type || 'bien',
+        active: item.active,
+      }));
+  };
+
   const loadItems = async () => {
     try {
-      const data = await inventoryItems.getAll();
-      const list = Array.isArray(data)
-        ? data
-        : Array.isArray((data as any)?.data)
-          ? (data as any).data
-          : Array.isArray((data as any)?.data?.data)
-            ? (data as any).data.data
-            : [];
-
-      const normalized = list
-        .filter((item: any) => item.active !== false)
-        .map((item: any) => ({
-          id: Number(item.id),
-          item_code: item.item_code,
-          code: item.code,
-          name: item.name,
-          average_cost: Number(item.average_cost ?? 0),
-          item_type: item.item_type || 'bien',
-          active: item.active,
-        }));
-
-      setOptions(normalized);
+      const data = await inventoryItems.getAll({ per_page: 100 });
+      setOptions(normalizeList(data));
     } catch (error) {
       console.error('Error loading inventory items:', error);
+      setOptions([]);
+    }
+  };
+
+  const searchItems = async (term: string) => {
+    try {
+      if (term.trim().length < 2) {
+        await loadItems();
+        return;
+      }
+
+      const data = await inventoryItems.search(term.trim());
+      setOptions(normalizeList(data));
+    } catch (error) {
+      console.error('Error searching inventory items:', error);
       setOptions([]);
     }
   };
@@ -126,6 +143,8 @@ export function InventoryItemAutocomplete({
     setSearchTerm(valueText);
     onTextChange?.(valueText);
     setShowDropdown(true);
+
+    searchItems(valueText);
 
     if (!valueText.trim()) {
       onSelect(null);

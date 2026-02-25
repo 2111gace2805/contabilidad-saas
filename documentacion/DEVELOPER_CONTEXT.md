@@ -81,5 +81,24 @@ Las partidas utilizan tres identificadores para su control y visualización:
 - Se persiste metadata DTE en `bills`: tipo DTE, código de generación, sello recibido, firma, bloques JSON (`emisor`, `receptor`, `cuerpoDocumento`, `resumen`, `apendice`) y JSON crudo.
 - Regla fiscal: solo compras con `tipo_dte = "03"` (Comprobante de Crédito Fiscal) alimentan `Libro de Compras`; `tipo_dte = "01"` se registra en compras pero no entra al libro.
 
+## 🆕 Ajustes ERP recientes (Febrero 2026)
+
+- **Clientes**
+	- El alta de cliente mantiene `Tipo de Cliente` como selector principal en UI.
+	- Backend normaliza payloads de integración con alias (`nombre`, `correo`, `telefono`, `codActividad`, `direccion.*`) para evitar 422 por diferencias de nombre de campos.
+	- Si no llega `district_id`, el backend intenta resolver uno válido según municipio.
+
+- **Facturación (Nueva Factura)**
+	- Búsqueda de ítems/productos con autocompletado conectado a backend (`search` + paginación), no solo listado local inicial.
+	- El usuario escribe y autocompleta; el tipo de ítem se determina automáticamente desde catálogo de inventario.
+
+- **Inventario / Ítems**
+	- Se formalizó `item_type` con valores `bien`, `servicio`, `ambos` en base de datos, backend y frontend.
+
+- **Administración → Tipos de Cuenta**
+	- Interfaz y etiquetas unificadas en español.
+	- Flujo de `Nuevo Tipo`, edición y eliminación funcional.
+	- Naturaleza mostrada como `Deudora`/`Acreedora`.
+
 ---
 *Última actualización: Febrero 2026*

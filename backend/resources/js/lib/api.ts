@@ -492,8 +492,9 @@ export const bills = {
 
 // Inventory Items API
 export const inventoryItems = {
-  async getAll() {
-    return ApiClient.get<Types.InventoryItem[]>('/inventory-items');
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<Types.InventoryItem[] | { data: Types.InventoryItem[] }>(`/inventory-items${query}`);
   },
 
   async getById(id: number) {
@@ -510,6 +511,10 @@ export const inventoryItems = {
 
   async delete(id: number) {
     return ApiClient.delete(`/inventory-items/${id}`);
+  },
+
+  async search(term: string) {
+    return ApiClient.get<Types.InventoryItem[] | { data: Types.InventoryItem[] }>(`/inventory-items?search=${encodeURIComponent(term)}&per_page=50`);
   },
 };
 

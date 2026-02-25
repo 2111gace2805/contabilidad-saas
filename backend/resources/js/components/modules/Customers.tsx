@@ -110,6 +110,15 @@ export function Customers() {
     });
   };
 
+  const inferProfileTypeFromCustomerType = (customerTypeId: string): 'natural' | 'juridical' => {
+    const selectedType = customerTypes.find((type) => String(type.id || type.customer_type_id) === String(customerTypeId));
+    const code = String(selectedType?.code || '').toUpperCase();
+    if (code.includes('NATURAL')) return 'natural';
+
+    const label = String(selectedType?.name || selectedType?.nombre || selectedType?.descripcion || '').toLowerCase();
+    return label.includes('natural') ? 'natural' : 'juridical';
+  };
+
   const loadCustomers = async () => {
     if (!selectedCompany) return;
 
@@ -155,22 +164,18 @@ export function Customers() {
       return;
     }
 
-    if (!formData.profile_type) {
-      alert('Selecciona un tipo de perfil');
-      return;
-    }
-
     if (!formData.customer_type_id) {
       alert('Selecciona un tipo de cliente');
       return;
     }
 
     try {
+      const profileType = inferProfileTypeFromCustomerType(formData.customer_type_id);
       const customerData = {
         code: formData.code.trim(),
         name: formData.name.trim(),
         business_name: formData.business_name.trim() || null,
-        profile_type: formData.profile_type,
+        profile_type: profileType,
         contact_name: formData.contact_name.trim() || null,
         email1: formData.email1.trim() || null,
         email2: formData.email2.trim() || null,
@@ -210,7 +215,11 @@ export function Customers() {
       alert('Cliente guardado exitosamente');
     } catch (error) {
       console.error('Error saving customer:', error);
-      alert('Error al guardar: ' + (error as any).message);
+      const err = error as any;
+      const details = err?.errors
+        ? Object.values(err.errors).flat().join('\n')
+        : err?.message || 'Error desconocido';
+      alert('Error al guardar:\n' + details);
     }
     setFormData({
       code: nextCode,
@@ -539,33 +548,20 @@ export function Customers() {
 
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Tipo de perfil <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.profile_type}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData({
-                      ...formData,
-                      profile_type: value,
-                      business_name: value === 'natural' ? '' : formData.business_name,
-                      dui: value === 'natural' ? formData.dui : '',
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="">Seleccione uno</option>
-                  <option value="natural">Persona natural</option>
-                  <option value="juridical">Persona jurídica</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de cliente <span className="text-red-500">*</span></label>
                 <select
                   value={formData.customer_type_id}
-                  onChange={(e) => setFormData({ ...formData, customer_type_id: e.target.value })}
+                  onChange={(e) => {
+                    const customerTypeId = e.target.value;
+                    const inferredProfile = inferProfileTypeFromCustomerType(customerTypeId);
+                    setFormData({
+                      ...formData,
+                      customer_type_id: customerTypeId,
+                      profile_type: inferredProfile,
+                      business_name: inferredProfile === 'natural' ? '' : formData.business_name,
+                      dui: inferredProfile === 'natural' ? formData.dui : '',
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                 >
                   <option value="">Seleccione uno</option>

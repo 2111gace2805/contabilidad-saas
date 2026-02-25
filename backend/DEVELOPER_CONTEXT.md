@@ -56,3 +56,10 @@ Para corregir una póliza contabilizada, se debe seguir el flujo de anulación b
 	- `dte_establishment_code`
 	- `dte_point_of_sale_code`
 - Backend valida estrictamente este formato al crear/editar ventas y autogenera correlativo cuando no se envía `invoice_number`.
+
+## 7. Ajustes ERP (Clientes, Ítems, Tipos de Cuenta)
+- **Clientes (alta por integración):** `CustomerController` normaliza alias de payload (`nombre`, `correo`, `telefono`, `codActividad`, `direccion.departamento`, `direccion.municipio`, `direccion.complemento`) hacia el esquema interno (`name`, `email1`, `phone`, `economic_activity_id`, `depa_id`, `municipality_id`, `address`).
+- **Clientes (ubicación):** cuando no se recibe `district_id`, se resuelve automáticamente el primer distrito activo del municipio para evitar errores 422 en altas externas.
+- **Facturación ventas:** autocompletado de ítems/productos ahora usa búsqueda backend (`/inventory-items?search=...`) y no depende solo del primer bloque paginado.
+- **Inventario/Ítems:** se formaliza `item_type` con catálogo cerrado (`bien`, `servicio`, `ambos`) en backend y frontend.
+- **Tipos de cuenta (Administración):** UI corregida en español y flujo completo de creación/edición/eliminación desde modal.
