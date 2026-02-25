@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -262,8 +263,28 @@ class CustomerController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $customer = Customer::where('company_id', $companyId)->findOrFail($id);
-        
-        $customer->delete();
+
+        $hasInvoices = $customer->invoices()
+            ->where('company_id', $companyId)
+            ->exists();
+
+        if ($hasInvoices) {
+            return response()->json([
+                'message' => 'No se puede eliminar este cliente porque tiene transacciones procesadas.',
+            ], 422);
+        }
+
+        try {
+            $customer->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este cliente porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Customer deleted successfully']);
     }

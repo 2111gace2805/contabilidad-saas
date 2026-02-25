@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
 
 class SupplierController extends Controller
@@ -125,8 +126,28 @@ class SupplierController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($id);
-        
-        $supplier->delete();
+
+        $hasBills = $supplier->bills()
+            ->where('company_id', $companyId)
+            ->exists();
+
+        if ($hasBills) {
+            return response()->json([
+                'message' => 'No se puede eliminar este proveedor porque tiene transacciones procesadas.',
+            ], 422);
+        }
+
+        try {
+            $supplier->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este proveedor porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Supplier deleted successfully']);
     }
