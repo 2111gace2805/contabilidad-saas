@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
 use App\Models\Bill;
+use App\Models\Company;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
@@ -15,6 +16,40 @@ use Illuminate\Support\Facades\Validator;
 
 class BillController extends Controller
 {
+
+    private function normalizeTaxId(?string $taxId): string
+    {
+        return preg_replace('/[^0-9A-Za-z]/', '', strtoupper((string) $taxId)) ?? '';
+    }
+
+    private function validateDteReceptorNitForCompany(int $companyId, array $data): ?array
+    {
+        if (empty($data['dte_receptor']) || !is_array($data['dte_receptor'])) {
+            return null;
+        }
+
+        $company = Company::where('id', $companyId)->first();
+        if (!$company) {
+            return ['message' => 'Company not found'];
+        }
+
+        $companyNitNormalized = $this->normalizeTaxId((string) ($company->nit ?? $company->rfc ?? ''));
+        if ($companyNitNormalized === '') {
+            return ['message' => 'La compañía no tiene NIT configurado para validar la recepción del DTE'];
+        }
+
+        $receptorNit = (string) ($data['dte_receptor']['nit'] ?? '');
+        $receptorNitNormalized = $this->normalizeTaxId($receptorNit);
+        if ($receptorNitNormalized === '') {
+            return ['message' => 'El JSON del DTE no contiene NIT del receptor'];
+        }
+
+        if ($receptorNitNormalized !== $companyNitNormalized) {
+            return ['message' => 'El NIT del receptor del DTE no coincide con el NIT de la compañía activa'];
+        }
+
+        return null;
+    }
 
     private function getCompanyId(Request $request)
     {
@@ -163,6 +198,11 @@ class BillController extends Controller
 
         $data = $validator->validated();
 
+        $nitValidationError = $this->validateDteReceptorNitForCompany((int) $companyId, $data);
+        if ($nitValidationError) {
+            return response()->json($nitValidationError, 422);
+        }
+
         if (empty($data['bill_number']) && !empty($data['dte_numero_control'])) {
             $data['bill_number'] = $data['dte_numero_control'];
         }
@@ -256,6 +296,11 @@ class BillController extends Controller
         }
 
         $data = $validator->validated();
+
+        $nitValidationError = $this->validateDteReceptorNitForCompany((int) $companyId, $data);
+        if ($nitValidationError) {
+            return response()->json($nitValidationError, 422);
+        }
 
         if (array_key_exists('supplier_id', $data) || array_key_exists('supplier_name_snapshot', $data) || array_key_exists('supplier_tax_id_snapshot', $data)) {
             $resolvedSupplierId = $this->resolveSupplierId((int) $companyId, $data);

@@ -185,6 +185,12 @@ export function Purchases() {
     return Number.isFinite(numeric) ? numeric : 0;
   };
 
+  const normalizeNit = (value: string | null | undefined) => {
+    return String(value || '')
+      .toUpperCase()
+      .replace(/[^0-9A-Z]/g, '');
+  };
+
   const mapDteLinesToEditor = (lines: any[] | null | undefined): PurchaseLineItem[] => {
     if (!Array.isArray(lines) || lines.length === 0) return [];
 
@@ -281,6 +287,25 @@ export function Purchases() {
       const identificacion = parsed?.identificacion || {};
       const emisor = parsed?.emisor || {};
       const receptor = parsed?.receptor || {};
+
+      const companyNitNormalized = normalizeNit(selectedCompany?.nit || '');
+      const receptorNitNormalized = normalizeNit(receptor?.nit || receptor?.rfc || '');
+
+      if (!companyNitNormalized) {
+        alert('La compañía activa no tiene NIT configurado. No se puede importar recepción DTE.');
+        return;
+      }
+
+      if (!receptorNitNormalized) {
+        alert('El JSON no contiene NIT del receptor. Importación cancelada.');
+        return;
+      }
+
+      if (receptorNitNormalized !== companyNitNormalized) {
+        alert('El NIT del receptor del JSON no coincide con el NIT de la compañía activa. Importación cancelada.');
+        return;
+      }
+
       const resumen = parsed?.resumen || {};
       const cuerpoDocumento = Array.isArray(parsed?.cuerpoDocumento) ? parsed.cuerpoDocumento : [];
       const apendice = Array.isArray(parsed?.apendice) ? parsed.apendice : [];
@@ -842,7 +867,7 @@ export function Purchases() {
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Cant.</th>
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Precio</th>
                           <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Total</th>
-                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Acción</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
