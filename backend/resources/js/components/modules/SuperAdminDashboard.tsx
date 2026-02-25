@@ -29,7 +29,7 @@ interface User {
   email: string;
   is_super_admin: boolean;
   active: boolean;
-  companies?: Array<{ id: number; name: string }>;
+  companies?: Array<{ id: number; name: string; pivot?: { role?: string } }>;
 }
 
 export function SuperAdminDashboard() {
@@ -254,6 +254,19 @@ export function SuperAdminDashboard() {
     } catch (error: any) {
       console.error('Error:', error);
       alert('Error: ' + (error?.response?.data?.message || 'Error desconocido'));
+    }
+  };
+
+  const handleUnassignUser = async (userItem: User, company: { id: number; name: string }) => {
+    if (!confirm(`¿Desasignar a "${userItem.name}" de la empresa "${company.name}"?`)) return;
+
+    try {
+      await ApiClient.delete(`/super-admin/users/remove?user_id=${userItem.id}&company_id=${company.id}`);
+      alert('Usuario desasignado exitosamente');
+      loadData();
+    } catch (error: any) {
+      console.error('Error unassigning user:', error);
+      alert('Error: ' + (error?.response?.data?.message || error?.message || 'Error desconocido'));
     }
   };
 
@@ -577,9 +590,23 @@ export function SuperAdminDashboard() {
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {u.companies && u.companies.length > 0 ? (
-                          <span>
-                            {u.companies.map((company) => company.name).join(', ')}
-                          </span>
+                          <div className="space-y-1">
+                            {u.companies.map((company) => (
+                              <div key={`${u.id}-${company.id}`} className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded px-2 py-1">
+                                <div className="text-xs text-slate-700">
+                                  <span className="font-medium">{company.name}</span>
+                                  <span className="text-slate-500"> ({company.pivot?.role || 'viewer'})</span>
+                                </div>
+                                <button
+                                  onClick={() => handleUnassignUser(u, company)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Desasignar usuario de esta empresa"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-slate-400">Sin asignar</span>
                         )}

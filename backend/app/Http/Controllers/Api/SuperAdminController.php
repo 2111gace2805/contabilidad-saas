@@ -26,7 +26,10 @@ class SuperAdminController extends Controller
 
     public function getAllUsers()
     {
-        $users = User::with('companies:id,name')
+        $users = User::with(['companies' => function ($query) {
+            $query->select('companies.id', 'companies.name')
+                ->withPivot('role');
+        }])
             ->orderBy('name')
             ->get();
 
