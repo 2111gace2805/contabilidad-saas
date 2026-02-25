@@ -57,7 +57,6 @@ class Bill extends Model
     public function payments()
     {
         return $this->belongsToMany(SupplierPayment::class, 'bill_payment_applications', 'bill_id', 'payment_id')
-            ->withPivot('amount')
-            ->withTimestamps();
+            ->withPivot('amount');
     }
 }
