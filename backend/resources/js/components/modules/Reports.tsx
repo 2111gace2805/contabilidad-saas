@@ -287,12 +287,12 @@ export function Reports() {
       const items: PurchaseBookItem[] = payload.map((inv: any) => ({
         invoice_date: inv.invoice_date,
         invoice_number: inv.invoice_number,
-        supplier_name: inv.suppliers?.name || 'N/A',
-        supplier_tax_id: inv.supplier_tax_id || inv.suppliers?.tax_id || 'N/A',
+        supplier_name: inv.supplier_name || inv.supplier?.name || 'N/A',
+        supplier_tax_id: inv.supplier_tax_id || inv.supplier?.tax_id || 'N/A',
         subtotal: Number(inv.subtotal ?? 0),
         tax_amount: Number(inv.tax_amount ?? 0),
         total: Number(inv.total ?? 0),
-        tax_name: inv.taxes?.name || 'N/A',
+        tax_name: inv.tax_name || 'IVA',
       }));
 
       setPurchaseBook(items);

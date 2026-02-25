@@ -36,6 +36,14 @@ interface BillFormData {
   is_fiscal_credit: boolean;
 }
 
+interface PurchaseLineItem {
+  code: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  tipoItem: string;
+}
+
 const emptyForm = (): BillFormData => ({
   supplier_id: '',
   bill_number: '',
@@ -76,6 +84,7 @@ export function Purchases() {
   const [showModal, setShowModal] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [formData, setFormData] = useState<BillFormData>(emptyForm);
+  const [lineItems, setLineItems] = useState<PurchaseLineItem[]>([]);
   const [importedFromJson, setImportedFromJson] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [billToPay, setBillToPay] = useState<Bill | null>(null);
@@ -174,6 +183,80 @@ export function Purchases() {
   const parseAmount = (value: any) => {
     const numeric = Number(value ?? 0);
     return Number.isFinite(numeric) ? numeric : 0;
+  };
+
+  const mapDteLinesToEditor = (lines: any[] | null | undefined): PurchaseLineItem[] => {
+    if (!Array.isArray(lines) || lines.length === 0) return [];
+
+    return lines.map((line: any, index: number) => ({
+      code: String(line?.codigo ?? `ITEM-${index + 1}`),
+      description: String(line?.descripcion ?? ''),
+      quantity: String(line?.cantidad ?? '1'),
+      unitPrice: String(line?.precioUni ?? line?.precioUnitario ?? '0.00'),
+      tipoItem: String(line?.tipoItem ?? '1'),
+    }));
+  };
+
+  const mapEditorLinesToDte = (items: PurchaseLineItem[]) => {
+    return items
+      .filter((item) => item.description.trim() !== '')
+      .map((item, index) => {
+        const quantity = Number(item.quantity || 0);
+        const unitPrice = Number(item.unitPrice || 0);
+        const qty = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+        const price = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
+        const lineTotal = Number((qty * price).toFixed(2));
+
+        return {
+          numItem: index + 1,
+          tipoItem: Number(item.tipoItem || 1),
+          codigo: item.code || `ITEM-${index + 1}`,
+          descripcion: item.description,
+          cantidad: qty,
+          precioUni: price,
+          ventaGravada: lineTotal,
+          ventaExenta: 0,
+          ventaNoSuj: 0,
+          uniMedida: 'UNI',
+        };
+      });
+  };
+
+  const recalculateFromLineItems = (items: PurchaseLineItem[]) => {
+    const subtotal = items.reduce((sum, item) => {
+      const quantity = Number(item.quantity || 0);
+      const unitPrice = Number(item.unitPrice || 0);
+      if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice)) return sum;
+      return sum + (quantity > 0 ? quantity : 0) * (unitPrice >= 0 ? unitPrice : 0);
+    }, 0);
+
+    setFormData((prev) => {
+      const tax = Number(prev.tax || 0);
+      return {
+        ...prev,
+        subtotal: subtotal.toFixed(2),
+        total: (subtotal + (Number.isFinite(tax) ? tax : 0)).toFixed(2),
+        dte_cuerpo_documento: mapEditorLinesToDte(items),
+      };
+    });
+  };
+
+  const addLineItem = () => {
+    const next = [...lineItems, { code: '', description: '', quantity: '1', unitPrice: '0.00', tipoItem: '1' }];
+    setLineItems(next);
+    recalculateFromLineItems(next);
+  };
+
+  const removeLineItem = (index: number) => {
+    const next = lineItems.filter((_, idx) => idx !== index);
+    setLineItems(next);
+    recalculateFromLineItems(next);
+  };
+
+  const updateLineItem = (index: number, key: keyof PurchaseLineItem, value: string) => {
+    const next = lineItems.map((item, idx) => (idx === index ? { ...item, [key]: value } : item));
+    setLineItems(next);
+    recalculateFromLineItems(next);
   };
 
   const handleSubtotalChange = (value: string) => {
@@ -282,6 +365,8 @@ export function Purchases() {
         is_fiscal_credit: tipoDte === '03',
       }));
 
+      setLineItems(mapDteLinesToEditor(cuerpoDocumento));
+
       setImportedFromJson(true);
 
       if (!matchedSupplier) {
@@ -355,6 +440,7 @@ export function Purchases() {
       setEditingBill(null);
       setImportedFromJson(false);
       setFormData(emptyForm());
+      setLineItems([]);
       await loadData();
       alert('Factura de compra guardada exitosamente');
     } catch (error: any) {
@@ -366,6 +452,7 @@ export function Purchases() {
   const handleEdit = (bill: Bill) => {
     setEditingBill(bill);
     setImportedFromJson(Boolean(bill.dte_raw_json || bill.dte_numero_control || bill.dte_codigo_generacion));
+    setLineItems(mapDteLinesToEditor(bill.dte_cuerpo_documento || []));
     setFormData({
       supplier_id: bill.supplier_id ? String(bill.supplier_id) : '',
       bill_number: bill.bill_number,
@@ -417,6 +504,7 @@ export function Purchases() {
     setEditingBill(null);
     setImportedFromJson(false);
     setFormData(emptyForm());
+    setLineItems([]);
   };
 
   const openPaymentModal = (bill: Bill) => {
@@ -500,6 +588,7 @@ export function Purchases() {
             setEditingBill(null);
             setImportedFromJson(false);
             setFormData(emptyForm());
+            setLineItems([]);
             setShowModal(true);
           }}
           className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors"
@@ -734,6 +823,114 @@ export function Purchases() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   rows={2}
                 />
+              </div>
+
+              <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-800">Detalle de ítems (manual o JSON)</h4>
+                  <button
+                    type="button"
+                    onClick={addLineItem}
+                    className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+                  >
+                    + Agregar ítem
+                  </button>
+                </div>
+
+                {lineItems.length === 0 ? (
+                  <p className="text-sm text-slate-500">No hay ítems. Agrega líneas para capturar la compra manualmente.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Tipo</th>
+                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Código</th>
+                          <th className="px-2 py-2 text-left text-xs font-medium text-slate-700">Descripción</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Cant.</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Precio</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Total</th>
+                          <th className="px-2 py-2 text-right text-xs font-medium text-slate-700">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {lineItems.map((item, index) => {
+                          const quantity = Number(item.quantity || 0);
+                          const unitPrice = Number(item.unitPrice || 0);
+                          const lineTotal = (Number.isFinite(quantity) ? quantity : 0) * (Number.isFinite(unitPrice) ? unitPrice : 0);
+
+                          return (
+                            <tr key={index}>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={item.tipoItem}
+                                  onChange={(e) => updateLineItem(index, 'tipoItem', e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                                >
+                                  <option value="1">Producto</option>
+                                  <option value="2">Servicio</option>
+                                  <option value="3">Activo fijo</option>
+                                  <option value="4">Otro</option>
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={item.code}
+                                  onChange={(e) => updateLineItem(index, 'code', e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                                  placeholder="ITEM-001"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="text"
+                                  value={item.description}
+                                  onChange={(e) => updateLineItem(index, 'description', e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
+                                  placeholder="Descripción del ítem"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.quantity}
+                                  onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.unitPrice}
+                                  onChange={(e) => updateLineItem(index, 'unitPrice', e.target.value)}
+                                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs text-right"
+                                />
+                              </td>
+                              <td className="px-2 py-2 text-xs text-right text-slate-700">
+                                ${formatAmount(lineTotal)}
+                              </td>
+                              <td className="px-2 py-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => removeLineItem(index)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Quitar ítem"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {(formData.dte_emisor || formData.dte_receptor || formData.dte_cuerpo_documento.length > 0 || formData.dte_resumen) && (
