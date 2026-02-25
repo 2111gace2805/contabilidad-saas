@@ -230,15 +230,15 @@ export function Purchases() {
       return sum + (quantity > 0 ? quantity : 0) * (unitPrice >= 0 ? unitPrice : 0);
     }, 0);
 
-    setFormData((prev) => {
-      const tax = Number(prev.tax || 0);
-      return {
-        ...prev,
-        subtotal: subtotal.toFixed(2),
-        total: (subtotal + (Number.isFinite(tax) ? tax : 0)).toFixed(2),
-        dte_cuerpo_documento: mapEditorLinesToDte(items),
-      };
-    });
+    const tax = subtotal * 0.13;
+
+    setFormData((prev) => ({
+      ...prev,
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      total: (subtotal + tax).toFixed(2),
+      dte_cuerpo_documento: mapEditorLinesToDte(items),
+    }));
   };
 
   const addLineItem = () => {
@@ -261,21 +261,13 @@ export function Purchases() {
 
   const handleSubtotalChange = (value: string) => {
     const subtotal = Number(value || 0);
-    const tax = Number(formData.tax || 0);
+    const normalizedSubtotal = Number.isFinite(subtotal) ? subtotal : 0;
+    const tax = normalizedSubtotal * 0.13;
     setFormData((prev) => ({
       ...prev,
       subtotal: value,
-      total: (subtotal + tax).toFixed(2),
-    }));
-  };
-
-  const handleTaxChange = (value: string) => {
-    const subtotal = Number(formData.subtotal || 0);
-    const tax = Number(value || 0);
-    setFormData((prev) => ({
-      ...prev,
-      tax: value,
-      total: (subtotal + tax).toFixed(2),
+      tax: tax.toFixed(2),
+      total: (normalizedSubtotal + tax).toFixed(2),
     }));
   };
 
@@ -799,8 +791,8 @@ export function Purchases() {
                     min="0"
                     step="0.01"
                     value={formData.tax}
-                    onChange={(e) => handleTaxChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    readOnly
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 font-medium"
                   />
                 </div>
 
