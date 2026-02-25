@@ -330,10 +330,12 @@ class DatabaseSeeder extends Seeder
         }
 
         try {
-            Branch::updateOrCreate(
-                $match,
-                $values
-            );
+            Branch::withoutTimestamps(function () use ($match, $values) {
+                Branch::updateOrCreate(
+                    $match,
+                    $values
+                );
+            });
         } catch (QueryException $e) {
             $sqlState = $e->errorInfo[0] ?? null;
             $driverCode = $e->errorInfo[1] ?? null;
@@ -356,7 +358,9 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ];
 
-            Branch::updateOrCreate($fallbackMatch, $fallbackValues);
+            Branch::withoutTimestamps(function () use ($fallbackMatch, $fallbackValues) {
+                Branch::updateOrCreate($fallbackMatch, $fallbackValues);
+            });
         }
     }
 

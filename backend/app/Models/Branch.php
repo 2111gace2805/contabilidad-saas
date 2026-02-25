@@ -8,6 +8,8 @@ class Branch extends Model
 {
     protected $table = 'branches';
 
+    const UPDATED_AT = null;
+
     protected $fillable = [
         'company_id',
         'code',
