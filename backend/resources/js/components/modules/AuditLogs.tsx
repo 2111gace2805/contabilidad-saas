@@ -13,7 +13,8 @@ export function AuditLogs() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  const canView = Boolean(user?.is_super_admin || userRole === 'admin');
+  const companyRole = selectedCompany?.pivot?.role || userRole;
+  const canView = Boolean(user?.is_super_admin || companyRole === 'admin');
 
   useEffect(() => {
     if (canView) {
