@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\Account;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -146,8 +147,28 @@ class InventoryItemController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $item = InventoryItem::where('company_id', $companyId)->findOrFail($id);
-        
-        $item->delete();
+
+        $hasTransactions = $item->transactions()
+            ->where('company_id', $companyId)
+            ->exists();
+
+        if ($hasTransactions) {
+            return response()->json([
+                'message' => 'No se puede eliminar este ítem porque tiene transacciones procesadas.',
+            ], 422);
+        }
+
+        try {
+            $item->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este ítem porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Inventory item deleted successfully']);
     }

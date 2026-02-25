@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\Account;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -113,8 +114,28 @@ class BankAccountController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $bankAccount = BankAccount::where('company_id', $companyId)->findOrFail($id);
+
+        $hasTransactions = $bankAccount->transactions()
+            ->where('company_id', $companyId)
+            ->exists();
+
+        if ($hasTransactions) {
+            return response()->json([
+                'message' => 'No se puede eliminar esta cuenta bancaria porque tiene transacciones procesadas.',
+            ], 422);
+        }
         
-        $bankAccount->delete();
+        try {
+            $bankAccount->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar esta cuenta bancaria porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Bank account deleted successfully']);
     }

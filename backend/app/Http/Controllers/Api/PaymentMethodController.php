@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaymentMethod;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -90,8 +91,18 @@ class PaymentMethodController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $method = PaymentMethod::where('company_id', $companyId)->findOrFail($id);
-        
-        $method->delete();
+
+        try {
+            $method->delete();
+        } catch (QueryException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                return response()->json([
+                    'message' => 'No se puede eliminar este método de pago porque tiene transacciones procesadas.',
+                ], 422);
+            }
+
+            throw $exception;
+        }
         
         return response()->json(['message' => 'Payment method deleted successfully']);
     }
