@@ -7,6 +7,7 @@ use App\Models\AccountingPeriod;
 use App\Models\AccountingSegment;
 use App\Models\AccountType;
 use App\Models\BankAccount;
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\DocumentType;
@@ -17,7 +18,9 @@ use App\Models\PaymentMethod;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 
 class DatabaseSeeder extends Seeder
@@ -110,6 +113,7 @@ class DatabaseSeeder extends Seeder
         $this->seedAccountingPeriods($company, $user);
 
         // Seed Catalogs
+        $this->seedEstablishments($company);
         $this->seedPaymentMethods($company);
         $this->seedDocumentTypes($company);
 
@@ -127,11 +131,19 @@ class DatabaseSeeder extends Seeder
 
         // Seed Journal Entry Types
         $this->seedJournalEntryTypes($company);
+        // Seed demo journal entries (2 per type) for reports
+        $this->call(JournalEntriesDemoSeeder::class);
 
         // Populate journal entry number sequences per company/type/year
         $this->call(JournalEntryNumberSequencesSeeder::class);
         // Populate invoice sequences per company/year (facturación / CxC)
         $this->call(InvoiceSequencesSeeder::class);
+        // Populate default correlatives by DTE type + establecimiento (M001/P001)
+        if (class_exists(InvoiceCorrelativesSeeder::class)) {
+            $this->call(InvoiceCorrelativesSeeder::class);
+        } else {
+            $this->command?->warn('InvoiceCorrelativesSeeder no disponible en este entorno; se omite.');
+        }
         // Seed customer types and economic activities
         $this->call(CustomerTypesSeeder::class);
         $this->call(EconomicActivitiesSeeder::class);
@@ -277,20 +289,90 @@ class DatabaseSeeder extends Seeder
         }
     }
 
+    private function seedEstablishments(Company $company): void
+    {
+        $hasMhCode = Schema::hasColumn('branches', 'mh_code');
+        $hasPosCode = Schema::hasColumn('branches', 'pos_code');
+        $hasType = Schema::hasColumn('branches', 'type');
+        $hasIsDefault = Schema::hasColumn('branches', 'is_default');
+
+        $match = ['company_id' => $company->id];
+        if ($hasMhCode && $hasPosCode) {
+            $match['mh_code'] = 'M001';
+            $match['pos_code'] = 'P001';
+        } else {
+            $match['code'] = 'M001-P001';
+        }
+
+        $values = [
+            'company_id' => $company->id,
+            'code' => 'M001-P001',
+            'name' => 'Casa Matriz',
+            'address' => $company->address,
+            'phone' => $company->phone,
+            'is_active' => true,
+        ];
+
+        if ($hasMhCode) {
+            $values['mh_code'] = 'M001';
+        }
+
+        if ($hasPosCode) {
+            $values['pos_code'] = 'P001';
+        }
+
+        if ($hasType) {
+            $values['type'] = 'casa_matriz';
+        }
+
+        if ($hasIsDefault) {
+            $values['is_default'] = true;
+        }
+
+        try {
+            Branch::updateOrCreate(
+                $match,
+                $values
+            );
+        } catch (QueryException $e) {
+            $sqlState = $e->errorInfo[0] ?? null;
+            $driverCode = $e->errorInfo[1] ?? null;
+
+            if ($sqlState !== '42S22' && (int) $driverCode !== 1054) {
+                throw $e;
+            }
+
+            $fallbackMatch = [
+                'company_id' => $company->id,
+                'code' => 'M001-P001',
+            ];
+
+            $fallbackValues = [
+                'company_id' => $company->id,
+                'code' => 'M001-P001',
+                'name' => 'Casa Matriz',
+                'address' => $company->address,
+                'phone' => $company->phone,
+                'is_active' => true,
+            ];
+
+            Branch::updateOrCreate($fallbackMatch, $fallbackValues);
+        }
+    }
+
     private function seedDocumentTypes(Company $company): void
     {
         $types = [
-            ['code' => 'FACTURA', 'name' => 'Factura'],
-            ['code' => 'CCF', 'name' => 'Comprobante de Crédito Fiscal'],
-            ['code' => 'RECIBO', 'name' => 'Recibo'],
-            ['code' => 'NOTA_CREDITO', 'name' => 'Nota de Crédito'],
-            ['code' => 'NOTA_DEBITO', 'name' => 'Nota de Débito'],
+            ['code' => 'DTE-01', 'name' => 'Factura Consumidor Final', 'prefix' => 'DTE-01', 'next_number' => 1],
+            ['code' => 'DTE-03', 'name' => 'Comprobante de Crédito Fiscal', 'prefix' => 'DTE-03', 'next_number' => 1],
+            ['code' => 'DTE-05', 'name' => 'Nota de Crédito', 'prefix' => 'DTE-05', 'next_number' => 1],
+            ['code' => 'DTE-06', 'name' => 'Nota de Débito', 'prefix' => 'DTE-06', 'next_number' => 1],
         ];
 
         foreach ($types as $type) {
             DocumentType::updateOrCreate(
                 ['company_id' => $company->id, 'code' => $type['code']],
-                array_merge(['company_id' => $company->id], $type)
+                array_merge(['company_id' => $company->id, 'is_active' => true], $type)
             );
         }
     }

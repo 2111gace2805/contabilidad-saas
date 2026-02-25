@@ -27,6 +27,8 @@ use App\Http\Controllers\Api\UnitOfMeasureController;
 use App\Http\Controllers\Api\TaxController;
 use App\Http\Controllers\Api\JournalEntryTypeController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\CompanyPreferenceController;
 
 // Authentication routes (no auth required)
 Route::prefix('auth')->group(function () {
@@ -124,6 +126,10 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     // Clientes
     Route::apiResource('customers', CustomerController::class);
 
+    // Facturación (Ventas)
+    Route::get('invoices/next-number', [InvoiceController::class, 'nextNumber']);
+    Route::apiResource('invoices', InvoiceController::class);
+
     // Usuarios de la empresa
     Route::apiResource('company-users', CompanyUserController::class);
 
@@ -141,6 +147,40 @@ Route::middleware(['auth:sanctum', 'company.context'])->group(function () {
     Route::get('catalogs/districts', [CatalogController::class, 'districts']);
     Route::get('catalogs/customer-types', [CatalogController::class, 'customerTypes']);
     Route::get('catalogs/economic-activities', [CatalogController::class, 'economicActivities']);
+
+    // Cuentas por pagar
+    Route::apiResource('suppliers', SupplierController::class);
+    Route::apiResource('bills', BillController::class);
+
+    // Bancos
+    Route::apiResource('bank-accounts', BankAccountController::class);
+
+    // Inventario
+    Route::apiResource('inventory-items', InventoryItemController::class);
+
+    // Reportes
+    Route::get('reports/trial-balance', [ReportController::class, 'trialBalance']);
+    Route::get('reports/balance-sheet', [ReportController::class, 'balanceSheet']);
+    Route::get('reports/income-statement', [ReportController::class, 'incomeStatement']);
+    Route::get('reports/purchase-book', [ReportController::class, 'purchaseBook']);
+    Route::get('reports/sales-book-consumer', [ReportController::class, 'salesBookConsumer']);
+    Route::get('reports/sales-book-taxpayer', [ReportController::class, 'salesBookTaxpayer']);
+    Route::get('reports/general-ledger', [ReportController::class, 'generalLedger']);
+    Route::get('reports/cash-flow', [ReportController::class, 'cashFlow']);
+    Route::get('reports/journal-book', [ReportController::class, 'journalBook']);
+    Route::get('reports/accounts-receivable', [ReportController::class, 'accountsReceivable']);
+    Route::get('reports/accounts-payable', [ReportController::class, 'accountsPayable']);
+    Route::get('reports/fiscal', [ReportController::class, 'fiscalReport']);
+    Route::get('reports/inventory', [ReportController::class, 'inventoryReport']);
+    Route::get('reports/export/{report}/{format}', [ReportController::class, 'export']);
+
+    // Auditoría y preferencias
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
+    Route::get('company-preferences', [CompanyPreferenceController::class, 'show']);
+    Route::put('company-preferences', [CompanyPreferenceController::class, 'update']);
+
+    // TODOs
+    Route::apiResource('todos', TodoController::class);
 
     // (remaining routes omitted) - end of company-scoped group
 });
