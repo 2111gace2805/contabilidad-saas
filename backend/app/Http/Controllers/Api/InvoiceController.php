@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Customer;
+use App\Models\CompanyPreference;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -88,6 +89,74 @@ class InvoiceController extends Controller
         return (int) $created->id;
     }
 
+    private function normalizeTipoDte(?string $tipoDte): string
+    {
+        $raw = preg_replace('/\D/', '', (string) $tipoDte);
+        if ($raw === null || $raw === '') {
+            return '';
+        }
+
+        return str_pad(substr($raw, -2), 2, '0', STR_PAD_LEFT);
+    }
+
+    private function getDteControlCodes(int $companyId): array
+    {
+        $preference = CompanyPreference::firstOrCreate(
+            ['company_id' => $companyId],
+            [
+                'primary_color' => 'slate',
+                'dte_establishment_code' => 'M001',
+                'dte_point_of_sale_code' => 'P001',
+            ]
+        );
+
+        $establishment = strtoupper((string) ($preference->dte_establishment_code ?: 'M001'));
+        $pointOfSale = strtoupper((string) ($preference->dte_point_of_sale_code ?: 'P001'));
+
+        if (!preg_match('/^[A-Z][0-9]{3}$/', $establishment)) {
+            $establishment = 'M001';
+        }
+        if (!preg_match('/^[P][0-9]{3}$/', $pointOfSale)) {
+            $pointOfSale = 'P001';
+        }
+
+        return [$establishment, $pointOfSale];
+    }
+
+    private function nextDteCorrelative(int $companyId, string $tipoDte, string $establishment, string $pointOfSale): string
+    {
+        $prefix = sprintf('DTE-%s-%s%s-', $tipoDte, $establishment, $pointOfSale);
+        $pattern = '/^DTE\-' . preg_quote($tipoDte, '/') . '\-' . preg_quote($establishment . $pointOfSale, '/') . '\-(\d{15})$/';
+
+        $maxCorrelative = Invoice::where('company_id', $companyId)
+            ->where('invoice_number', 'like', $prefix . '%')
+            ->pluck('invoice_number')
+            ->reduce(function (int $carry, string $value) use ($pattern) {
+                if (preg_match($pattern, $value, $matches)) {
+                    $number = (int) $matches[1];
+                    return $number > $carry ? $number : $carry;
+                }
+
+                return $carry;
+            }, 0);
+
+        return str_pad((string) ($maxCorrelative + 1), 15, '0', STR_PAD_LEFT);
+    }
+
+    private function buildDteInvoiceNumber(int $companyId, string $tipoDte): string
+    {
+        [$establishment, $pointOfSale] = $this->getDteControlCodes($companyId);
+        $correlative = $this->nextDteCorrelative($companyId, $tipoDte, $establishment, $pointOfSale);
+
+        return sprintf('DTE-%s-%s%s-%s', $tipoDte, $establishment, $pointOfSale, $correlative);
+    }
+
+    private function isValidDteInvoiceNumber(string $invoiceNumber, string $tipoDte, string $establishment, string $pointOfSale): bool
+    {
+        $pattern = '/^DTE\-' . preg_quote($tipoDte, '/') . '\-' . preg_quote($establishment . $pointOfSale, '/') . '\-\d{15}$/';
+        return (bool) preg_match($pattern, strtoupper($invoiceNumber));
+    }
+
     public function index(Request $request)
     {
         $companyId = $this->getCompanyId($request);
@@ -125,7 +194,7 @@ class InvoiceController extends Controller
         $validator = Validator::make($request->all(), [
             'customer_id' => 'nullable|exists:customers,id',
             'payment_method_id' => 'nullable|exists:payment_methods,id',
-            'invoice_number' => 'required|string|max:50',
+            'invoice_number' => 'nullable|string|max:50',
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date',
             'subtotal' => 'required|numeric|min:0',
@@ -134,7 +203,7 @@ class InvoiceController extends Controller
             'balance' => 'nullable|numeric|min:0',
             'status' => 'nullable|in:draft,pending,partial,paid,overdue,void,cancelled,issued',
             'notes' => 'nullable|string',
-            'tipo_dte' => 'nullable|string|max:5',
+            'tipo_dte' => 'required|string|max:5',
             'dte_version' => 'nullable|integer|min:1|max:99',
             'dte_ambiente' => 'nullable|string|max:5',
             'dte_numero_control' => 'nullable|string|max:80',
@@ -162,6 +231,26 @@ class InvoiceController extends Controller
         }
 
         $data = $validator->validated();
+
+        $data['tipo_dte'] = $this->normalizeTipoDte($data['tipo_dte'] ?? '');
+        if ($data['tipo_dte'] === '') {
+            return response()->json(['message' => 'tipo_dte inválido. Debe ser un código numérico de 2 dígitos.'], 422);
+        }
+
+        [$establishment, $pointOfSale] = $this->getDteControlCodes((int) $companyId);
+
+        if (empty($data['invoice_number'])) {
+            $data['invoice_number'] = $this->buildDteInvoiceNumber((int) $companyId, $data['tipo_dte']);
+        }
+
+        $data['invoice_number'] = strtoupper((string) $data['invoice_number']);
+        if (!$this->isValidDteInvoiceNumber($data['invoice_number'], $data['tipo_dte'], $establishment, $pointOfSale)) {
+            return response()->json([
+                'message' => 'Formato inválido de número de factura. Debe cumplir: DTE-{tipo_dte}-' . $establishment . $pointOfSale . '-{15 dígitos}',
+            ], 422);
+        }
+
+        $data['dte_numero_control'] = $data['invoice_number'];
 
         if (empty($data['due_date'])) {
             $data['due_date'] = $data['invoice_date'];
@@ -247,6 +336,30 @@ class InvoiceController extends Controller
         }
 
         $data = $validator->validated();
+
+        if (array_key_exists('tipo_dte', $data)) {
+            $data['tipo_dte'] = $this->normalizeTipoDte($data['tipo_dte']);
+            if ($data['tipo_dte'] === '') {
+                return response()->json(['message' => 'tipo_dte inválido. Debe ser un código numérico de 2 dígitos.'], 422);
+            }
+        }
+
+        [$establishment, $pointOfSale] = $this->getDteControlCodes((int) $companyId);
+        $tipoDteToValidate = $data['tipo_dte'] ?? $invoice->tipo_dte;
+        if (is_string($tipoDteToValidate)) {
+            $tipoDteToValidate = $this->normalizeTipoDte($tipoDteToValidate);
+        }
+
+        if (array_key_exists('invoice_number', $data) && !empty($data['invoice_number']) && !empty($tipoDteToValidate)) {
+            $data['invoice_number'] = strtoupper((string) $data['invoice_number']);
+            if (!$this->isValidDteInvoiceNumber($data['invoice_number'], (string) $tipoDteToValidate, $establishment, $pointOfSale)) {
+                return response()->json([
+                    'message' => 'Formato inválido de número de factura. Debe cumplir: DTE-{tipo_dte}-' . $establishment . $pointOfSale . '-{15 dígitos}',
+                ], 422);
+            }
+
+            $data['dte_numero_control'] = $data['invoice_number'];
+        }
 
         if (array_key_exists('customer_id', $data) || array_key_exists('customer_name_snapshot', $data) || array_key_exists('customer_tax_id_snapshot', $data)) {
             $resolvedCustomerId = $this->resolveCustomerId((int) $companyId, $data);

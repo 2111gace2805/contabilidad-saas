@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCompany } from '../../contexts/CompanyContext';
 import {
   customers as customersApi,
   invoices as invoicesApi,
   documentTypes as documentTypesApi,
   paymentMethods as paymentMethodsApi,
+  companyPreferences as companyPreferencesApi,
 } from '../../lib/api';
 import { Plus, Save, X, Trash2, FileText } from 'lucide-react';
 import type { Customer, Invoice, PaymentMethod } from '../../types';
@@ -81,43 +82,35 @@ export function Sales() {
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeOption[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dteEstablishmentCode, setDteEstablishmentCode] = useState('M001');
+  const [dtePointOfSaleCode, setDtePointOfSaleCode] = useState('P001');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState<InvoiceFormData>(emptyForm);
   const [lineItems, setLineItems] = useState<SalesLineItem[]>([]);
 
-  const nextInvoiceNumber = useMemo(() => {
-    const year = new Date().getFullYear();
-    const numbers = invoices
-      .map((inv) => {
-        const match = String(inv.invoice_number || '').match(/(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      })
-      .filter((n) => Number.isFinite(n));
-    const max = numbers.length ? Math.max(...numbers) : 0;
-    return `F-${year}-${String(max + 1).padStart(6, '0')}`;
-  }, [invoices]);
+  const normalizeTipoDteCode = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    return digits ? digits.padStart(2, '0').slice(-2) : '';
+  };
 
   const buildSuggestedNumber = (tipoDteCode: string) => {
-    const year = new Date().getFullYear();
-    const numbers = invoices
-      .map((inv) => {
-        const match = String(inv.invoice_number || '').match(/(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      })
-      .filter((n) => Number.isFinite(n));
-    const max = numbers.length ? Math.max(...numbers) : 0;
-    const seq = String(max + 1).padStart(6, '0');
+    const tipo = normalizeTipoDteCode(tipoDteCode || '01') || '01';
+    const basePrefix = `DTE-${tipo}-${dteEstablishmentCode}${dtePointOfSaleCode}-`;
 
-    if (tipoDteCode === '01') {
-      return `FAC-${year}-${seq}`;
-    }
+    const max = invoices.reduce((carry, invoice) => {
+      const value = String(invoice.invoice_number || '');
+      const match = value.match(new RegExp(`^${basePrefix}(\\d{15})$`));
+      if (!match) return carry;
 
-    if (tipoDteCode === '03') {
-      return `DTE-03-${year}-${seq}`;
-    }
+      const number = Number(match[1]);
+      if (!Number.isFinite(number)) return carry;
 
-    return `F-${year}-${seq}`;
+      return number > carry ? number : carry;
+    }, 0);
+
+    const nextCorrelative = String(max + 1).padStart(15, '0');
+    return `${basePrefix}${nextCorrelative}`;
   };
 
   const calculateDueDateByCondition = (
@@ -158,11 +151,12 @@ export function Sales() {
 
     setLoading(true);
     try {
-      const [invoicesRes, customersRes, documentTypesRes, paymentMethodsRes] = await Promise.all([
+      const [invoicesRes, customersRes, documentTypesRes, paymentMethodsRes, preferencesRes] = await Promise.all([
         invoicesApi.getAll(),
         customersApi.getAll(),
         documentTypesApi.getAll(),
         paymentMethodsApi.getAll(),
+        companyPreferencesApi.get(),
       ]);
 
       const invoicesList = Array.isArray(invoicesRes)
@@ -178,7 +172,7 @@ export function Sales() {
           : [];
 
       const docTypesList = (Array.isArray(documentTypesRes) ? documentTypesRes : ((documentTypesRes as any)?.data || []))
-        .map((doc: any) => ({ id: Number(doc.id), code: String(doc.code || ''), name: String(doc.name || '') }))
+        .map((doc: any) => ({ id: Number(doc.id), code: normalizeTipoDteCode(String(doc.code || '')), name: String(doc.name || '') }))
         .filter((doc: DocumentTypeOption) => doc.code && doc.name);
 
       const paymentMethodsList = (Array.isArray(paymentMethodsRes) ? paymentMethodsRes : ((paymentMethodsRes as any)?.data || [])) as PaymentMethod[];
@@ -187,6 +181,8 @@ export function Sales() {
       setCustomers(customersList);
       setDocumentTypes(docTypesList);
       setPaymentMethods(paymentMethodsList);
+      setDteEstablishmentCode(String(preferencesRes?.dte_establishment_code || 'M001').toUpperCase());
+      setDtePointOfSaleCode(String(preferencesRes?.dte_point_of_sale_code || 'P001').toUpperCase());
     } catch (error) {
       console.error('Error loading sales data:', error);
     } finally {
@@ -401,7 +397,7 @@ export function Sales() {
         balance: formData.total,
         status: 'pending' as const,
         notes: formData.notes || undefined,
-        tipo_dte: formData.tipo_dte || undefined,
+        tipo_dte: normalizeTipoDteCode(formData.tipo_dte) || undefined,
         dte_numero_control: formData.invoice_number,
         dte_codigo_generacion: formData.dte_codigo_generacion || undefined,
         dte_fec_emi: formData.invoice_date,
@@ -421,7 +417,8 @@ export function Sales() {
 
       setShowModal(false);
       setEditing(null);
-      setFormData({ ...emptyForm(), invoice_number: nextInvoiceNumber, tipo_dte: documentTypes[0]?.code || '' });
+      const nextTipo = documentTypes[0]?.code || '01';
+      setFormData({ ...emptyForm(), invoice_number: buildSuggestedNumber(nextTipo), tipo_dte: nextTipo });
       setLineItems([]);
       await loadData();
       alert('Factura de venta guardada exitosamente');
@@ -459,7 +456,7 @@ export function Sales() {
       tax: String(invoice.tax),
       total: String(invoice.total),
       notes: invoice.notes || '',
-      tipo_dte: invoice.tipo_dte || '',
+      tipo_dte: normalizeTipoDteCode(invoice.tipo_dte || ''),
       dte_codigo_generacion: invoice.dte_codigo_generacion || '',
       dte_sello_recibido: invoice.dte_sello_recibido || '',
       customer_name_snapshot: invoice.customer_name_snapshot || invoice.customer?.name || '',
@@ -476,7 +473,8 @@ export function Sales() {
   const handleCancel = () => {
     setShowModal(false);
     setEditing(null);
-    setFormData({ ...emptyForm(), invoice_number: nextInvoiceNumber, tipo_dte: documentTypes[0]?.code || '' });
+    const nextTipo = documentTypes[0]?.code || '01';
+    setFormData({ ...emptyForm(), invoice_number: buildSuggestedNumber(nextTipo), tipo_dte: nextTipo });
     setLineItems([]);
   };
 
@@ -616,7 +614,7 @@ export function Sales() {
                   <select
                     value={formData.tipo_dte}
                     onChange={(e) => {
-                      const tipo = e.target.value;
+                      const tipo = normalizeTipoDteCode(e.target.value);
                       setFormData((prev) => ({
                         ...prev,
                         tipo_dte: tipo,
@@ -654,7 +652,7 @@ export function Sales() {
                     value={formData.invoice_number}
                     onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-                    placeholder={nextInvoiceNumber}
+                    placeholder={buildSuggestedNumber(formData.tipo_dte || documentTypes[0]?.code || '01')}
                   />
                 </div>
               </div>

@@ -25,7 +25,11 @@ class CompanyPreferenceController extends Controller
 
         $preference = CompanyPreference::firstOrCreate(
             ['company_id' => $companyId],
-            ['primary_color' => 'slate']
+            [
+                'primary_color' => 'slate',
+                'dte_establishment_code' => 'M001',
+                'dte_point_of_sale_code' => 'P001',
+            ]
         );
 
         return response()->json($preference);
@@ -41,6 +45,8 @@ class CompanyPreferenceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'primary_color' => 'required|string|in:slate,blue,emerald,indigo,rose,amber',
+            'dte_establishment_code' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
+            'dte_point_of_sale_code' => ['nullable', 'regex:/^[Pp][0-9]{3}$/'],
             'firmador_certificate_name' => 'nullable|string|max:255',
             'firmador_certificate_content' => 'nullable|string',
             'firmador_private_key_name' => 'nullable|string|max:255',
@@ -63,6 +69,13 @@ class CompanyPreferenceController extends Controller
         }
 
         $validated = $validator->validated();
+        if (isset($validated['dte_establishment_code'])) {
+            $validated['dte_establishment_code'] = strtoupper($validated['dte_establishment_code']);
+        }
+        if (isset($validated['dte_point_of_sale_code'])) {
+            $validated['dte_point_of_sale_code'] = strtoupper($validated['dte_point_of_sale_code']);
+        }
+
         $preference = CompanyPreference::updateOrCreate(
             ['company_id' => $companyId],
             $validated

@@ -6,6 +6,8 @@ type SignerTab = 'cert' | 'smtp';
 
 interface FormState {
   primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
+  dte_establishment_code: string;
+  dte_point_of_sale_code: string;
   firmador_certificate_name: string;
   firmador_certificate_content: string;
   firmador_private_key_name: string;
@@ -25,6 +27,8 @@ interface FormState {
 
 const defaultForm = (): FormState => ({
   primary_color: 'slate',
+  dte_establishment_code: 'M001',
+  dte_point_of_sale_code: 'P001',
   firmador_certificate_name: '',
   firmador_certificate_content: '',
   firmador_private_key_name: '',
@@ -71,6 +75,8 @@ export function ElectronicSignerSettings() {
       const data = await companyPreferences.get();
       setForm({
         primary_color: data.primary_color || 'slate',
+        dte_establishment_code: data.dte_establishment_code || 'M001',
+        dte_point_of_sale_code: data.dte_point_of_sale_code || 'P001',
         firmador_certificate_name: data.firmador_certificate_name || '',
         firmador_certificate_content: data.firmador_certificate_content || '',
         firmador_private_key_name: data.firmador_private_key_name || '',
@@ -161,6 +167,8 @@ export function ElectronicSignerSettings() {
     try {
       await companyPreferences.update({
         primary_color: form.primary_color,
+        dte_establishment_code: form.dte_establishment_code || 'M001',
+        dte_point_of_sale_code: form.dte_point_of_sale_code || 'P001',
         firmador_certificate_name: form.firmador_certificate_name || null,
         firmador_certificate_content: form.firmador_certificate_content || null,
         firmador_private_key_name: form.firmador_private_key_name || null,
@@ -227,6 +235,30 @@ export function ElectronicSignerSettings() {
         <div className="p-6 space-y-4">
           {activeTab === 'cert' ? (
             <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Código matriz/sucursal</label>
+                  <input
+                    type="text"
+                    value={form.dte_establishment_code}
+                    onChange={(e) => setForm({ ...form, dte_establishment_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="M001"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Código punto de venta</label>
+                  <input
+                    type="text"
+                    value={form.dte_point_of_sale_code}
+                    onChange={(e) => setForm({ ...form, dte_point_of_sale_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    placeholder="P001"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Certificado (.crt)</label>

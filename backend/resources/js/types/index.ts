@@ -351,6 +351,8 @@ export interface CompanyPreference {
   id: number;
   company_id: number;
   primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
+  dte_establishment_code?: string | null;
+  dte_point_of_sale_code?: string | null;
   firmador_certificate_name?: string | null;
   firmador_certificate_content?: string | null;
   firmador_private_key_name?: string | null;

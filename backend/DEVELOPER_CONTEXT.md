@@ -39,3 +39,20 @@ Para corregir una póliza contabilizada, se debe seguir el flujo de anulación b
 - `BillController` acepta campos DTE (`tipo_dte`, `dte_codigo_generacion`, `dte_numero_control`, `dte_*`) y guarda bloques JSON completos.
 - Si `supplier_id` no viene, se usa snapshot del emisor (`supplier_name_snapshot`, `supplier_tax_id_snapshot`) y se resuelve/crea proveedor automáticamente.
 - `ReportController@purchaseBook` solo incluye compras con `is_fiscal_credit = true` (tipo DTE `03`).
+
+## 6. Formato Oficial de Número DTE en Ventas
+- El número de factura/`numeroControl` para ventas se normaliza al formato:
+	- `DTE-{tipoDocumento}-{codigoSucursal}{codigoPuntoVenta}-{correlativo15}`
+- Estructura esperada:
+	- `tipoDocumento`: 2 dígitos (ej. `01`, `03`, `07`).
+	- `codigoSucursal`: 4 caracteres (ej. `M001`).
+	- `codigoPuntoVenta`: 4 caracteres (ej. `P001`).
+	- `correlativo15`: 15 dígitos numéricos con ceros a la izquierda.
+- Ejemplos válidos:
+	- `DTE-01-M001P001-250000000000273`
+	- `DTE-03-M001P001-260000000000039`
+	- `DTE-07-M001P001-000000000001348`
+- Los códigos `M001` y `P001` son configurables por empresa en `CompanyPreference`:
+	- `dte_establishment_code`
+	- `dte_point_of_sale_code`
+- Backend valida estrictamente este formato al crear/editar ventas y autogenera correlativo cuando no se envía `invoice_number`.

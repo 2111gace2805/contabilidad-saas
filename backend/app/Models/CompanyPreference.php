@@ -12,6 +12,8 @@ class CompanyPreference extends Model
     protected $fillable = [
         'company_id',
         'primary_color',
+        'dte_establishment_code',
+        'dte_point_of_sale_code',
         'firmador_certificate_name',
         'firmador_certificate_content',
         'firmador_private_key_name',
