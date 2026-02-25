@@ -200,6 +200,7 @@ export interface Invoice {
   id: number;
   company_id: number;
   customer_id: number | null;
+  payment_method_id?: number | null;
   invoice_number: string;
   invoice_date: string;
   due_date: string;
@@ -233,6 +234,7 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   customer?: Customer;
+  payment_method?: PaymentMethod;
   lines?: InvoiceLine[];
 }
 
@@ -340,6 +342,30 @@ export interface PaymentMethod {
   name: string;
   description: string | null;
   active: boolean;
+  is_active?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyPreference {
+  id: number;
+  company_id: number;
+  primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
+  firmador_certificate_name?: string | null;
+  firmador_certificate_content?: string | null;
+  firmador_private_key_name?: string | null;
+  firmador_private_key_content?: string | null;
+  firmador_api_password?: string | null;
+  firmador_api_url?: string | null;
+  smtp_provider?: 'office365' | 'google' | 'zeptomail' | 'aws' | 'custom' | null;
+  smtp_url?: string | null;
+  smtp_api_key?: string | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_username?: string | null;
+  smtp_password?: string | null;
+  smtp_encryption?: 'tls' | 'ssl' | 'starttls' | 'none' | null;
+  smtp_region?: string | null;
   created_at: string;
   updated_at: string;
 }

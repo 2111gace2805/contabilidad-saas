@@ -612,6 +612,17 @@ export const paymentMethods = {
   },
 };
 
+// Company Preferences API
+export const companyPreferences = {
+  async get() {
+    return ApiClient.get<Types.CompanyPreference>('/company-preferences');
+  },
+
+  async update(data: Partial<Types.CompanyPreference>) {
+    return ApiClient.put<Types.CompanyPreference>('/company-preferences', data);
+  },
+};
+
 // Document Types API
 export const documentTypes = {
   async getAll() {

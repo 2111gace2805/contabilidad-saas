@@ -12,6 +12,21 @@ class CompanyPreference extends Model
     protected $fillable = [
         'company_id',
         'primary_color',
+        'firmador_certificate_name',
+        'firmador_certificate_content',
+        'firmador_private_key_name',
+        'firmador_private_key_content',
+        'firmador_api_password',
+        'firmador_api_url',
+        'smtp_provider',
+        'smtp_url',
+        'smtp_api_key',
+        'smtp_host',
+        'smtp_port',
+        'smtp_username',
+        'smtp_password',
+        'smtp_encryption',
+        'smtp_region',
     ];
 
     public function company()

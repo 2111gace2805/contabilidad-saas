@@ -97,7 +97,7 @@ class InvoiceController extends Controller
         }
 
         $query = Invoice::where('company_id', $companyId)
-            ->with(['customer']);
+            ->with(['customer', 'paymentMethod']);
 
         if ($request->has('customer_id')) {
             $query->where('customer_id', $request->customer_id);
@@ -124,6 +124,7 @@ class InvoiceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'customer_id' => 'nullable|exists:customers,id',
+            'payment_method_id' => 'nullable|exists:payment_methods,id',
             'invoice_number' => 'required|string|max:50',
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date',
@@ -184,7 +185,7 @@ class InvoiceController extends Controller
         $data['company_id'] = $companyId;
 
         $invoice = Invoice::create($data);
-        $invoice->load('customer');
+        $invoice->load(['customer', 'paymentMethod']);
         
         return response()->json($invoice, 201);
     }
@@ -194,7 +195,7 @@ class InvoiceController extends Controller
         $companyId = $this->getCompanyId($request);
         
         $invoice = Invoice::where('company_id', $companyId)
-            ->with(['customer', 'payments'])
+            ->with(['customer', 'paymentMethod', 'payments'])
             ->findOrFail($id);
         
         return response()->json($invoice);
@@ -208,6 +209,7 @@ class InvoiceController extends Controller
         
         $validator = Validator::make($request->all(), [
             'customer_id' => 'nullable|exists:customers,id',
+            'payment_method_id' => 'nullable|exists:payment_methods,id',
             'invoice_number' => 'sometimes|required|string|max:50',
             'invoice_date' => 'sometimes|required|date',
             'due_date' => 'nullable|date',
@@ -256,7 +258,7 @@ class InvoiceController extends Controller
         }
 
         $invoice->update($data);
-        $invoice->load('customer');
+        $invoice->load(['customer', 'paymentMethod']);
         
         return response()->json($invoice);
     }

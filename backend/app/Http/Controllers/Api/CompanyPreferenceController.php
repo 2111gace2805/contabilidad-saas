@@ -41,15 +41,31 @@ class CompanyPreferenceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'primary_color' => 'required|string|in:slate,blue,emerald,indigo,rose,amber',
+            'firmador_certificate_name' => 'nullable|string|max:255',
+            'firmador_certificate_content' => 'nullable|string',
+            'firmador_private_key_name' => 'nullable|string|max:255',
+            'firmador_private_key_content' => 'nullable|string',
+            'firmador_api_password' => 'nullable|string|max:255',
+            'firmador_api_url' => 'nullable|url|max:255',
+            'smtp_provider' => 'nullable|string|in:office365,google,zeptomail,aws,custom',
+            'smtp_url' => 'nullable|url|max:255',
+            'smtp_api_key' => 'nullable|string|max:255',
+            'smtp_host' => 'nullable|string|max:255',
+            'smtp_port' => 'nullable|integer|min:1|max:65535',
+            'smtp_username' => 'nullable|string|max:255',
+            'smtp_password' => 'nullable|string|max:255',
+            'smtp_encryption' => 'nullable|string|in:tls,ssl,starttls,none',
+            'smtp_region' => 'nullable|string|max:30',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $validated = $validator->validated();
         $preference = CompanyPreference::updateOrCreate(
             ['company_id' => $companyId],
-            ['primary_color' => $validator->validated()['primary_color']]
+            $validated
         );
 
         AuditLogger::log(
@@ -59,7 +75,11 @@ class CompanyPreferenceController extends Controller
             'company_preference',
             (string) $preference->id,
             'Color corporativo actualizado',
-            ['primary_color' => $preference->primary_color]
+            [
+                'primary_color' => $preference->primary_color,
+                'smtp_provider' => $preference->smtp_provider,
+                'firmador_api_url' => $preference->firmador_api_url,
+            ]
         );
 
         return response()->json($preference);

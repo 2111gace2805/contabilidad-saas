@@ -6,14 +6,16 @@ import { TaxConfiguration } from './TaxConfiguration';
 import { Warehouses } from './Warehouses';
 import { Branches } from './Branches';
 import { UnitsOfMeasure } from './UnitsOfMeasure';
+import { ElectronicSignerSettings } from './ElectronicSignerSettings';
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<'documents' | 'payments' | 'taxes' | 'warehouses' | 'branches' | 'units'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'payments' | 'taxes' | 'warehouses' | 'branches' | 'units' | 'electronic-signer'>('documents');
 
   const tabs = [
     { id: 'documents' as const, label: 'Tipos de Documento', component: DocumentTypes },
     { id: 'payments' as const, label: 'Formas de Pago', component: PaymentMethods },
     { id: 'taxes' as const, label: 'Configuración de Impuestos', component: TaxConfiguration },
+    { id: 'electronic-signer' as const, label: 'FIRMADOR ELECTRONICO', component: ElectronicSignerSettings },
     { id: 'warehouses' as const, label: 'Bodegas', component: Warehouses },
     { id: 'branches' as const, label: 'Sucursales', component: Branches },
     { id: 'units' as const, label: 'Unidades de Medida', component: UnitsOfMeasure },

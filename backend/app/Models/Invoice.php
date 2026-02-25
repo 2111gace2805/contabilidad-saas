@@ -10,7 +10,7 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_id', 'customer_id', 'invoice_number', 'invoice_date',
+        'company_id', 'customer_id', 'payment_method_id', 'invoice_number', 'invoice_date',
         'due_date', 'subtotal', 'tax', 'total', 'balance', 'status',
         'journal_entry_id', 'notes', 'tipo_dte', 'dte_version', 'dte_ambiente',
         'dte_numero_control', 'dte_codigo_generacion', 'dte_fec_emi', 'dte_hor_emi',
@@ -47,6 +47,11 @@ class Invoice extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
     }
 
     public function journalEntry()
