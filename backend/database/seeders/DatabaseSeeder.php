@@ -366,6 +366,9 @@ class DatabaseSeeder extends Seeder
 
     private function seedDocumentTypes(Company $company): void
     {
+        $hasPrefix = Schema::hasColumn('document_types', 'prefix');
+        $hasNextNumber = Schema::hasColumn('document_types', 'next_number');
+
         $types = [
             ['code' => 'DTE-01', 'name' => 'Factura Consumidor Final', 'prefix' => 'DTE-01', 'next_number' => 1],
             ['code' => 'DTE-03', 'name' => 'Comprobante de Crédito Fiscal', 'prefix' => 'DTE-03', 'next_number' => 1],
@@ -374,9 +377,24 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($types as $type) {
+            $values = [
+                'company_id' => $company->id,
+                'is_active' => true,
+                'code' => $type['code'],
+                'name' => $type['name'],
+            ];
+
+            if ($hasPrefix) {
+                $values['prefix'] = $type['prefix'];
+            }
+
+            if ($hasNextNumber) {
+                $values['next_number'] = $type['next_number'];
+            }
+
             DocumentType::updateOrCreate(
                 ['company_id' => $company->id, 'code' => $type['code']],
-                array_merge(['company_id' => $company->id, 'is_active' => true], $type)
+                $values
             );
         }
     }
