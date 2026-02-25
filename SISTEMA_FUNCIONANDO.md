@@ -303,7 +303,7 @@ Ahora que el sistema funciona, puedes:
 
 1. **Crear nuevas empresas** en el sistema
 2. **Configurar catálogos contables** por empresa
-3. **Registrar pólizas contables**
+3. **Registrar partidas contables**
 4. **Generar reportes financieros**
 5. **Agregar clientes y proveedores**
 

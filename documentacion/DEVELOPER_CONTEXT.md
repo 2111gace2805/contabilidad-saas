@@ -25,7 +25,7 @@ Existen tres niveles jerárquicos definidos en `User.php` y protegidos por middl
 - **ADMIN**: Administrador de la empresa. Acceso total a módulos y configuración.
 - **USUARIO**: Operador/Contador. Acceso a módulos operativos, sin acceso a configuración.
 
-### 3. Flujo de Pólizas (Journal Entries)
+### 3. Flujo de Partidas (Journal Entries)
 Se implementa un patrón de "Documento en Borrador":
 - `draft`: Editable, no afecta saldos.
 - `posted`: No editable, genera registros en el libro mayor.
@@ -35,10 +35,10 @@ Se implementa un patrón de "Documento en Borrador":
 - **Mensajes de Usuario**: Todos los mensajes de error, notificaciones y etiquetas en la UI deben estar en **Español**.
 - **Validaciones**: Las respuestas de validación del backend deben ser traducidas o personalizadas al español.
 
-### 5. Secuenciación de Pólizas
-Las pólizas utilizan tres identificadores para su control y visualización:
+### 5. Secuenciación de Partidas
+Las partidas utilizan tres identificadores para su control y visualización:
 - **Identificador (`sequence_number`)**: Un número incremental global por cada empresa (infinito).
-- **Tipo de Partida (`entry_type`)**: Categoría de la póliza (PD, PI, PE, PA, etc.).
+- **Tipo de Partida (`entry_type`)**: Categoría de la partida (PD, PI, PE, PA, etc.).
 - **Correlativo (`type_number`)**: Un número incremental de 7 dígitos que se gestiona por cada tipo de partida dentro de la misma empresa.
 
 ## 📐 Estándares de Código
@@ -59,7 +59,7 @@ Las pólizas utilizan tres identificadores para su control y visualización:
 
 - **Ubicación**: `/tests/backend` para PHPUnit.
 - **Ejecución**: `docker-compose exec backend vendor/bin/phpunit`.
-- **Feature Tests**: Priorizar pruebas de integración que validen flujos completos (ej: creación de póliza balanceada).
+- **Feature Tests**: Priorizar pruebas de integración que validen flujos completos (ej: creación de partida balanceada).
 
 ## 🚀 Despliegue y Docker
 

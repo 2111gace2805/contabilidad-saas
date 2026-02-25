@@ -11,7 +11,7 @@ Implementar el módulo de:
 - Facturación de venta
 - Cuentas por cobrar (CxC)
 - Aplicación de pagos
-- Generación automática de pólizas contables
+- Generación automática de partidas contables
 
 Cumpliendo:
 
@@ -26,7 +26,9 @@ Cumpliendo:
 - Clientes: selección de cliente en facturación usa buscador tipo autocomplete (código/nombre/NIT) con navegación de teclado, mismo UX que búsqueda de cuentas contables.
 - Clientes: campo "Tipo de cliente" es obligatorio; perfil por defecto jurídica. Persona natural muestra "Nombres y apellidos" y DUI; jurídica muestra razón social y nombre comercial.
 - Clientes: búsqueda y paginación (100 por página) en la grilla de clientes.
-- Facturas de venta: número de factura se sugiere automáticamente con formato `F-YYYY-000001` por empresa/año y se muestra solo lectura en el modal.
+- Facturas de venta: el correlativo se genera automáticamente por tipo DTE y establecimiento (ej. `DTE-01-M001P001-000000000000001`) y se muestra solo lectura en el modal.
+- Configuración > Establecimientos: ahora se gestiona **Casa Matriz / Sucursal** con codificación MH (`M001` / `S001`) y código interno de Punto de Venta (`P001`).
+- Regla por defecto: toda empresa debe tener al menos una **Casa Matriz M001** y **Punto de Venta P001**.
 
 ---
 
@@ -207,36 +209,42 @@ Tabla: `invoice_lines`
 
 ---
 
-# 8. CORRELATIVO DE FACTURAS
+# 8. CORRELATIVO DE FACTURAS POR TIPO DTE
 
-Tabla: `invoice_sequences`
+Tabla: `document_types`
 
-- id (uuid)
-- company_id (uuid)
-- fiscal_year (int)
-- current_number (int)
-- prefix (varchar)
+- id (bigint)
+- company_id (bigint)
+- code (varchar) — código DTE (`DTE-01`, `DTE-03`, etc.)
+- name (varchar)
+- prefix (varchar) — prefijo de correlativo (normalmente igual al código DTE)
+- next_number (int) — siguiente secuencia a emitir
+
+Tabla: `invoices`
+
+- document_type_id (FK a `document_types`)
+- invoice_number (varchar, único por empresa)
 
 Restricción:
-unique(company_id, fiscal_year)
+unique(company_id, invoice_number)
 
-Formato recomendado:
+Formato vigente:
 
-F-2025-000001
+`{prefix}-{mh_code}{pos_code}-{correlativo_15_dígitos}`
+
+Ejemplos:
+
+- `DTE-01-M001P001-000000000000001`
+- `DTE-03-S001P001-000000000000001`
 
 Reglas técnicas obligatorias:
 
-- Debe generarse dentro de DB::transaction()
-- Debe usarse lockForUpdate()
-- No usar MAX() ni COUNT()
+- Se genera en backend dentro de `DB::transaction()`.
+- Se usa `lockForUpdate()` sobre el `document_type` para evitar colisiones concurrentes.
+- No usar `MAX()` ni `COUNT()` para asignar correlativos.
+- El frontend solo muestra vista previa; el número final lo asigna el backend.
 
-### Implementación en el proyecto
-
-- Se añadieron migraciones para las tablas `customers`, `invoices`, `invoice_lines`, `invoice_sequences`, `customer_payments` y `payment_applications`.
-- Se añadió el seeder `InvoiceSequencesSeeder` para inicializar los correlativos por empresa y año fiscal.
-- Las reglas de correlativo y contabilización siguen las NIF aplicables y las reglas del proyecto: correlativo por empresa y año fiscal, generado únicamente al emitir (POSTED) la factura, usando transacción y `lockForUpdate()`.
-
-Nota: Las migraciones se pueden aplicar con `php artisan migrate` o `php artisan migrate:fresh --seed` si se desea recrear la base de datos de desarrollo.
+Nota: Para aplicar estos cambios en desarrollo, ejecutar `php artisan migrate` y luego `php artisan db:seed` (o `php artisan migrate:fresh --seed` para reinicio completo).
 
 ---
 
@@ -244,7 +252,7 @@ Nota: Las migraciones se pueden aplicar con `php artisan migrate` o `php artisan
 
 Cuando una factura cambia a POSTED:
 
-Debe generar automáticamente una póliza contable.
+Debe generar automáticamente una partida contable.
 
 Asiento típico:
 
@@ -255,7 +263,7 @@ Haber:
 - Ventas
 - IVA débito fiscal
 
-La póliza debe usar el correlativo del tipo INGRESO.
+La partida debe usar el correlativo del tipo INGRESO.
 
 ---
 
@@ -266,7 +274,7 @@ La póliza debe usar el correlativo del tipo INGRESO.
 3. No se puede eliminar factura POSTED
 4. Solo puede anularse (VOID)
 5. No se reutilizan correlativos
-6. Si se anula, debe generarse póliza reversa
+6. Si se anula, debe generarse partida reversa
 
 ---
 
@@ -310,7 +318,7 @@ Haber:
 # 13. PRINCIPIOS ARQUITECTÓNICOS
 
 - No mezclar company_id
-- No generar pólizas manuales para ventas
+- No generar partidas manuales para ventas
 - Toda contabilización debe ejecutarse en DB::transaction()
 - Las facturas POSTED son inmutables
 - No reutilizar correlativos

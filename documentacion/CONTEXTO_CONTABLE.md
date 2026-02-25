@@ -90,9 +90,9 @@ Estas reglas tienen prioridad absoluta sobre cualquier decisión técnica,
 refactorización, sugerencia automática del IDE o autocompletado.
 
 
-## 8. Correlativos Contables (Numeración de Pólizas)
+## 8. Correlativos Contables (Numeración de Partidas)
 
-El número de póliza NO depende del ID autoincremental.
+El número de partida NO depende del ID autoincremental.
 
 Cada empresa tiene correlativos independientes por:
 
@@ -140,7 +140,7 @@ Restricción única:
 3. No se puede usar `MAX()`, `COUNT()` o id autoincremental para calcular el siguiente número.
 4. La numeración debe ser inmutable: una vez asignado el número no se modifica.
 5. No se reutilizan números anulados.
-6. El correlativo no depende del id de la póliza.
+6. El correlativo no depende del id de la partida.
 
 Implementación en este repositorio:
 - Se agregó la migración `create_journal_entry_sequences_table`.

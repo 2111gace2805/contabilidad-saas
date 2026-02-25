@@ -19,7 +19,7 @@ Se ha implementado un sistema completo de Control de Acceso Basado en Roles (RBA
 - **NO puede crear nuevas empresas** en el sistema
 
 ### 3. **USUARIO** (Viewer/Contador)
-- Acceso a módulos operativos (Ventas, Compras, Pólizas, etc.)
+- Acceso a módulos operativos (Ventas, Compras, Partidas, etc.)
 - **NO tiene acceso** a configuraciones del sistema
 - **NO puede ver Settings**
 - Puede consultar reportes y trabajar en operaciones del día a día
@@ -163,7 +163,7 @@ Después de ejecutar `php artisan migrate:fresh --seed`:
 ### 4. Usuario trabaja:
 1. Login como usuario
 2. Seleccionar empresa
-3. Usar módulos operativos (Ventas, Compras, Pólizas, etc.)
+3. Usar módulos operativos (Ventas, Compras, Partidas, etc.)
 4. **NO puede acceder** a Settings
 
 ---

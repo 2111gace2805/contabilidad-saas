@@ -19,7 +19,7 @@ Se realizó una migración agresiva completa eliminando **TODAS** las referencia
 | **Customers** (Clientes) | ✅ Migrado | `/customers` | Simplificado, CRUD completo |
 | **Purchases** (Compras/Bills) | ✅ Migrado | `/bills` | CRUD completo con cálculos |
 | **Sales** (Ventas/Invoices) | ✅ Migrado | `/invoices` | CRUD completo con estados |
-| **JournalEntries** (Pólizas) | ✅ Migrado | `/journal-entries` | Con post/void |
+| **JournalEntries** (Partidas) | ✅ Migrado | `/journal-entries` | Con post/void |
 | **Inventory** (Inventario) | ✅ Migrado | `/inventory-items` | CRUD completo |
 | **Treasury** (Tesorería) | ✅ Migrado | `/bank-accounts` | CRUD completo |
 | **Reports** (Reportes) | ✅ Migrado | `/account-types`, `/accounts` | Ya estaba parcialmente migrado |
@@ -112,7 +112,7 @@ docker-compose restart frontend
 - ✅ Crear un cliente
 - ✅ Crear una compra
 - ✅ Crear una factura de venta
-- ✅ Crear una póliza contable
+- ✅ Crear una partida contable
 - ✅ Agregar un producto al inventario
 - ✅ Configurar tipos de documento
 - ✅ Configurar formas de pago

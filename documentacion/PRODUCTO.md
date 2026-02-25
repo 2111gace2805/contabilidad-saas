@@ -1,7 +1,7 @@
 # Resumen del Producto: Sistema Contable Multi-Empresa
 
 ## 🎯 Objetivo del Sistema
-El sistema contable multi-empresa está diseñado para gestionar la contabilidad de múltiples empresas de manera aislada, con soporte para catálogos contables jerárquicos, pólizas contables, reportes financieros, y módulos operativos como cuentas por cobrar, cuentas por pagar, inventarios, y activos fijos. Está construido con un backend en Laravel y un frontend en React, ofreciendo una experiencia moderna y eficiente.
+El sistema contable multi-empresa está diseñado para gestionar la contabilidad de múltiples empresas de manera aislada, con soporte para catálogos contables jerárquicos, partidas contables, reportes financieros, y módulos operativos como cuentas por cobrar, cuentas por pagar, inventarios, y activos fijos. Está construido con un backend en Laravel y un frontend en React, ofreciendo una experiencia moderna y eficiente.
 
 ---
 
@@ -38,7 +38,7 @@ El sistema contable multi-empresa está diseñado para gestionar la contabilidad
 - **Tipos de cuenta:** Activo, Pasivo, Capital, Ingresos, Gastos.
 - **Segmentos contables:** Configurables por empresa.
 - **Períodos fiscales:** Con cierre/apertura y restricciones.
-- **Pólizas contables:** Diario, ingresos, egresos con validación.
+- **Partidas contables:** Diario, ingresos, egresos con validación.
 - **Clientes y CxC:** Gestión de cuentas por cobrar.
 - **Proveedores y CxP:** Gestión de cuentas por pagar.
 - **Inventario:** Control de existencias y movimientos.
@@ -72,7 +72,7 @@ El sistema contable multi-empresa está diseñado para gestionar la contabilidad
 - Definir períodos fiscales y abrirlos para registrar transacciones.
 
 ### 2. Operaciones Contables
-- Registrar pólizas contables (diario, ingresos, egresos).
+- Registrar partidas contables (diario, ingresos, egresos).
 - Gestionar cuentas por cobrar y cuentas por pagar.
 - Controlar inventarios y activos fijos.
 
@@ -134,7 +134,7 @@ docker-compose logs -f
 ## 📚 Documentación Relacionada
 - [CONFIGURACION_COMPLETA.md](../backend/CONFIGURACION_COMPLETA.md): Guía paso a paso para configurar el sistema.
 - [API_DOCUMENTATION.md](../backend/API_DOCUMENTATION.md): Referencia completa de endpoints API.
-- [FLUJO_POLIZAS.md](../backend/FLUJO_POLIZAS.md): Flujo de trabajo para pólizas contables.
+- [FLUJO_POLIZAS.md](../backend/FLUJO_POLIZAS.md): Flujo de trabajo para partidas contables.
 - [CONTROL_PERIODOS_FISCALES.md](../backend/CONTROL_PERIODOS_FISCALES.md): Gestión de períodos fiscales.
 
 ---
@@ -182,17 +182,17 @@ docker-compose logs -f
 
 **¡El sistema está listo para usar!** 🎉
 
-## **Pantalla Nueva Póliza**
+## **Pantalla Nueva Partida**
 
-- **Objetivo:** Vista para crear una nueva póliza contable que coincida visual y funcionalmente con la maqueta de la aplicación (ver imagen de referencia del modal "Nueva Póliza Contable").
+- **Objetivo:** Vista para crear una nueva partida contable que coincida visual y funcionalmente con la maqueta de la aplicación (ver imagen de referencia del modal "Nueva Partida Contable").
 - **Diseño:** Modal centrado con `max-width` ampliado para mostrar claramente los campos y la tabla de movimientos en una sola vista.
 
-- **Encabezado de nota:** Caja informativa azul con el texto: "Nota: La póliza se guardará como borrador y puede estar desbalanceada. Para contabilizarla, deberá estar balanceada (débitos = créditos)."
+- **Encabezado de nota:** Caja informativa azul con el texto: "Nota: La partida se guardará como borrador y puede estar desbalanceada. Para contabilizarla, deberá estar balanceada (débitos = créditos)."
 
 - **Campos principales (arriba):**
   - **Fecha:** selector de fecha (formato visible en UI dd/mm/yyyy).
   - **Tipo de Partida:** menú desplegable con opciones (ver lista abajo). En la maqueta la opción por defecto visible es "PA - Partida de Ajuste".
-  - **Descripción:** campo de texto grande para el concepto de la póliza.
+  - **Descripción:** campo de texto grande para el concepto de la partida.
 
 - **Movimientos (tabla):**
   - Columnas: **Cuenta**, **Descripción**, **Debe**, **Haber**.
@@ -208,7 +208,7 @@ docker-compose logs -f
   - Al seleccionar una sugerencia se guarda internamente el `account_id` asociado.
 
 - **Validaciones en UI:**
-  - No se permite guardar la póliza si existe alguna línea sin `account_id` (la fila sin cuenta mostrará un error junto al campo de cuenta).
+  - No se permite guardar la partida si existe alguna línea sin `account_id` (la fila sin cuenta mostrará un error junto al campo de cuenta).
   - Debe igualar suma de Debe y Haber antes de permitir la acción "Contabilizar"; guardar como borrador no exige balance.
   - Las acciones que cambian estado (Contabilizar / Anular) verifican que el periodo esté abierto.
 
