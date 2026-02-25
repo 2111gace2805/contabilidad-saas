@@ -95,7 +95,7 @@ export function ElectronicSignerSettings() {
   };
 
   const certificateLoaded = useMemo(() => form.firmador_certificate_name.trim().length > 0, [form.firmador_certificate_name]);
-  const privateKeyLoaded = useMemo(() => form.firmador_private_key_name.trim().length > 0, [form.firmador_private_key_name]);
+  const privateKeyLoaded = useMemo(() => form.firmador_private_key_content.trim().length > 0, [form.firmador_private_key_content]);
 
   const readFileAsText = (file: File) => {
     return new Promise<string>((resolve, reject) => {
@@ -126,33 +126,6 @@ export function ElectronicSignerSettings() {
     } catch (error) {
       console.error('Error reading certificate file:', error);
       alert('No se pudo leer el archivo de certificado.');
-    } finally {
-      event.target.value = '';
-    }
-  };
-
-  const handleLoadPrivateKey = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const allowed = ['.key', '.pem'];
-    const lowerName = file.name.toLowerCase();
-    if (!allowed.some((ext) => lowerName.endsWith(ext))) {
-      alert('Solo se permiten llaves privadas .key o .pem.');
-      event.target.value = '';
-      return;
-    }
-
-    try {
-      const content = await readFileAsText(file);
-      setForm((prev) => ({
-        ...prev,
-        firmador_private_key_name: file.name,
-        firmador_private_key_content: content,
-      }));
-    } catch (error) {
-      console.error('Error reading private key file:', error);
-      alert('No se pudo leer la llave privada.');
     } finally {
       event.target.value = '';
     }
@@ -267,14 +240,15 @@ export function ElectronicSignerSettings() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Llave Privada (.key/.pem)</label>
-                  <input
-                    type="file"
-                    accept=".key,.pem"
-                    onChange={handleLoadPrivateKey}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Llave Privada (texto)</label>
+                  <textarea
+                    value={form.firmador_private_key_content}
+                    onChange={(e) => setForm((prev) => ({ ...prev, firmador_private_key_content: e.target.value, firmador_private_key_name: 'manual_text' }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                    rows={4}
+                    placeholder="Pega aquí la llave privada en texto"
                   />
-                  <p className="text-xs text-slate-500 mt-1">{privateKeyLoaded ? `Cargada: ${form.firmador_private_key_name}` : 'No hay llave privada cargada'}</p>
+                  <p className="text-xs text-slate-500 mt-1">{privateKeyLoaded ? 'Llave privada capturada en texto' : 'No hay llave privada ingresada'}</p>
                 </div>
               </div>
 

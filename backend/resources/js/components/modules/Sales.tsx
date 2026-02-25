@@ -19,6 +19,9 @@ interface DocumentTypeOption {
 interface InvoiceFormData {
   customer_id: string;
   payment_method_id: string;
+  condition_operation: '1' | '2';
+  credit_term_unit: 'dias' | 'meses' | 'anios';
+  credit_term_value: string;
   invoice_number: string;
   invoice_date: string;
   due_date: string;
@@ -49,6 +52,9 @@ interface SalesLineItem {
 const emptyForm = (): InvoiceFormData => ({
   customer_id: '',
   payment_method_id: '',
+  condition_operation: '1',
+  credit_term_unit: 'dias',
+  credit_term_value: '',
   invoice_number: '',
   invoice_date: new Date().toISOString().split('T')[0],
   due_date: '',
@@ -91,6 +97,55 @@ export function Sales() {
     const max = numbers.length ? Math.max(...numbers) : 0;
     return `F-${year}-${String(max + 1).padStart(6, '0')}`;
   }, [invoices]);
+
+  const buildSuggestedNumber = (tipoDteCode: string) => {
+    const year = new Date().getFullYear();
+    const numbers = invoices
+      .map((inv) => {
+        const match = String(inv.invoice_number || '').match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => Number.isFinite(n));
+    const max = numbers.length ? Math.max(...numbers) : 0;
+    const seq = String(max + 1).padStart(6, '0');
+
+    if (tipoDteCode === '01') {
+      return `FAC-${year}-${seq}`;
+    }
+
+    if (tipoDteCode === '03') {
+      return `DTE-03-${year}-${seq}`;
+    }
+
+    return `F-${year}-${seq}`;
+  };
+
+  const calculateDueDateByCondition = (
+    invoiceDate: string,
+    conditionOperation: '1' | '2',
+    creditTermUnit: 'dias' | 'meses' | 'anios',
+    creditTermValue: string,
+  ) => {
+    if (conditionOperation === '1') {
+      return invoiceDate;
+    }
+
+    const numericValue = Number(creditTermValue || 0);
+    if (!Number.isFinite(numericValue) || numericValue <= 0) {
+      return invoiceDate;
+    }
+
+    const dueDate = new Date(invoiceDate);
+    if (creditTermUnit === 'dias') {
+      dueDate.setDate(dueDate.getDate() + numericValue);
+    } else if (creditTermUnit === 'meses') {
+      dueDate.setMonth(dueDate.getMonth() + numericValue);
+    } else {
+      dueDate.setFullYear(dueDate.getFullYear() + numericValue);
+    }
+
+    return dueDate.toISOString().split('T')[0];
+  };
 
   useEffect(() => {
     if (selectedCompany) {
@@ -243,14 +298,13 @@ export function Sales() {
       customer_phone_snapshot: selected?.phone || prev.customer_phone_snapshot,
       customer_email_snapshot: selected?.email1 || selected?.email || prev.customer_email_snapshot,
       customer_address_snapshot: selected?.address || prev.customer_address_snapshot,
-      due_date: prev.due_date || (selected?.credit_days ? plusDays(prev.invoice_date, Number(selected.credit_days)) : prev.invoice_date),
+      due_date: calculateDueDateByCondition(
+        prev.invoice_date,
+        prev.condition_operation,
+        prev.credit_term_unit,
+        prev.credit_term_value || (selected?.credit_days ? String(selected.credit_days) : ''),
+      ),
     }));
-  };
-
-  const plusDays = (date: string, days: number) => {
-    const parsed = new Date(date);
-    parsed.setDate(parsed.getDate() + days);
-    return parsed.toISOString().split('T')[0];
   };
 
   const handleSave = async () => {
@@ -280,6 +334,56 @@ export function Sales() {
     }
 
     try {
+      const dueDate = calculateDueDateByCondition(
+        formData.invoice_date,
+        formData.condition_operation,
+        formData.credit_term_unit,
+        formData.credit_term_value,
+      );
+
+      const dteResumen = {
+        condicionOperacion: Number(formData.condition_operation),
+        plazoOperacion: formData.condition_operation === '2'
+          ? {
+              unidad: formData.credit_term_unit,
+              valor: Number(formData.credit_term_value || 0),
+            }
+          : null,
+      };
+
+      const dteApendice = [
+        {
+          campo: 'condicion_operacion',
+          etiqueta: 'Condicion de la operacion',
+          valor: formData.condition_operation === '1' ? 'Contado' : 'Credito',
+        },
+        ...(formData.condition_operation === '2'
+          ? [
+              {
+                campo: 'plazo_unidad',
+                etiqueta: 'Plazo unidad',
+                valor: formData.credit_term_unit,
+              },
+              {
+                campo: 'plazo_valor',
+                etiqueta: 'Plazo valor',
+                valor: formData.credit_term_value,
+              },
+            ]
+          : []),
+      ];
+
+      const generatedDteJson = {
+        identificacion: {
+          tipoDte: formData.tipo_dte,
+          numeroControl: formData.invoice_number,
+          fecEmi: formData.invoice_date,
+        },
+        cuerpoDocumento: formData.dte_cuerpo_documento,
+        resumen: dteResumen,
+        apendice: dteApendice,
+      };
+
       const payload = {
         customer_id: formData.customer_id ? Number(formData.customer_id) : undefined,
         payment_method_id: formData.payment_method_id ? Number(formData.payment_method_id) : undefined,
@@ -290,7 +394,7 @@ export function Sales() {
         customer_address_snapshot: formData.customer_address_snapshot || undefined,
         invoice_number: formData.invoice_number,
         invoice_date: formData.invoice_date,
-        due_date: formData.due_date || formData.invoice_date,
+        due_date: dueDate,
         subtotal: formData.subtotal,
         tax: formData.tax,
         total: formData.total,
@@ -303,6 +407,9 @@ export function Sales() {
         dte_fec_emi: formData.invoice_date,
         dte_sello_recibido: formData.dte_sello_recibido || undefined,
         dte_cuerpo_documento: formData.dte_cuerpo_documento?.length ? formData.dte_cuerpo_documento : undefined,
+        dte_resumen: dteResumen,
+        dte_apendice: dteApendice,
+        dte_raw_json: JSON.stringify(generatedDteJson),
         is_fiscal_credit: formData.is_fiscal_credit,
       };
 
@@ -342,6 +449,9 @@ export function Sales() {
     setFormData({
       customer_id: invoice.customer_id ? String(invoice.customer_id) : '',
       payment_method_id: invoice.payment_method_id ? String(invoice.payment_method_id) : '',
+      condition_operation: String((invoice.dte_resumen as any)?.condicionOperacion || 1) === '2' ? '2' : '1',
+      credit_term_unit: ((invoice.dte_resumen as any)?.plazoOperacion?.unidad || 'dias') as 'dias' | 'meses' | 'anios',
+      credit_term_value: String((invoice.dte_resumen as any)?.plazoOperacion?.valor || ''),
       invoice_number: invoice.invoice_number,
       invoice_date: invoice.invoice_date,
       due_date: invoice.due_date,
@@ -411,7 +521,8 @@ export function Sales() {
         <button
           onClick={() => {
             setEditing(null);
-            setFormData({ ...emptyForm(), invoice_number: nextInvoiceNumber, tipo_dte: documentTypes[0]?.code || '' });
+            const initialTipoDte = documentTypes[0]?.code || '';
+            setFormData({ ...emptyForm(), invoice_number: buildSuggestedNumber(initialTipoDte), tipo_dte: initialTipoDte });
             setLineItems([]);
             setShowModal(true);
           }}
@@ -506,7 +617,12 @@ export function Sales() {
                     value={formData.tipo_dte}
                     onChange={(e) => {
                       const tipo = e.target.value;
-                      setFormData((prev) => ({ ...prev, tipo_dte: tipo, is_fiscal_credit: tipo === '03' }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        tipo_dte: tipo,
+                        is_fiscal_credit: tipo === '03',
+                        invoice_number: editing ? prev.invoice_number : buildSuggestedNumber(tipo),
+                      }));
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   >
@@ -545,11 +661,88 @@ export function Sales() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de condición *</label>
+                  <select
+                    value={formData.condition_operation}
+                    onChange={(e) => {
+                      const condition = e.target.value === '2' ? '2' : '1';
+                      setFormData((prev) => {
+                        const nextDueDate = calculateDueDateByCondition(
+                          prev.invoice_date,
+                          condition,
+                          prev.credit_term_unit,
+                          prev.credit_term_value,
+                        );
+
+                        return {
+                          ...prev,
+                          condition_operation: condition,
+                          due_date: nextDueDate,
+                        };
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                  >
+                    <option value="1">Contado</option>
+                    <option value="2">Crédito</option>
+                  </select>
+                </div>
+
+                {formData.condition_operation === '2' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Plazo</label>
+                      <select
+                        value={formData.credit_term_unit}
+                        onChange={(e) => {
+                          const unit = e.target.value as 'dias' | 'meses' | 'anios';
+                          setFormData((prev) => ({
+                            ...prev,
+                            credit_term_unit: unit,
+                            due_date: calculateDueDateByCondition(prev.invoice_date, prev.condition_operation, unit, prev.credit_term_value),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                      >
+                        <option value="dias">Días</option>
+                        <option value="meses">Meses</option>
+                        <option value="anios">Años</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Valor del plazo</label>
+                      <input
+                        type="text"
+                        value={formData.credit_term_value}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          setFormData((prev) => ({
+                            ...prev,
+                            credit_term_value: value,
+                            due_date: calculateDueDateByCondition(prev.invoice_date, prev.condition_operation, prev.credit_term_unit, value),
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
+                        placeholder="Solo números"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Fecha *</label>
                   <input
                     type="date"
                     value={formData.invoice_date}
-                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                    onChange={(e) => {
+                      const invoiceDate = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        invoice_date: invoiceDate,
+                        due_date: calculateDueDateByCondition(invoiceDate, prev.condition_operation, prev.credit_term_unit, prev.credit_term_value),
+                      }));
+                    }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
                   />
                 </div>
