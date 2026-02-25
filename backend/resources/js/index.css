@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+	--ui-accent-color: #1e293b;
+	--ui-header-bg: #ffffff;
+	--ui-sidebar-bg: #1e293b;
+	--ui-app-bg: #f1f5f9;
+	--ui-font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+body {
+	font-family: var(--ui-font-family);
+	background-color: var(--ui-app-bg);
+}

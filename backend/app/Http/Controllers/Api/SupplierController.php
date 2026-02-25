@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
+use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
@@ -73,6 +74,19 @@ class SupplierController extends Controller
         $data['company_id'] = $companyId;
 
         $supplier = Supplier::create($data);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'supplier.create',
+            'supplier',
+            (string) $supplier->id,
+            'Proveedor creado',
+            [
+                'name' => $supplier->name,
+                'nit' => $supplier->nit,
+            ]
+        );
         
         return response()->json($supplier, 201);
     }
@@ -117,6 +131,19 @@ class SupplierController extends Controller
         unset($data['rfc']);
 
         $supplier->update($data);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'supplier.update',
+            'supplier',
+            (string) $supplier->id,
+            'Proveedor actualizado',
+            [
+                'name' => $supplier->name,
+                'nit' => $supplier->nit,
+            ]
+        );
         
         return response()->json($supplier);
     }
@@ -139,6 +166,15 @@ class SupplierController extends Controller
 
         try {
             $supplier->delete();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'supplier.delete',
+                'supplier',
+                (string) $id,
+                'Proveedor eliminado'
+            );
         } catch (QueryException $exception) {
             if ((string) $exception->getCode() === '23000') {
                 return response()->json([

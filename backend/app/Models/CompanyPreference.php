@@ -12,6 +12,13 @@ class CompanyPreference extends Model
     protected $fillable = [
         'company_id',
         'primary_color',
+        'ui_theme_template',
+        'ui_accent_color',
+        'ui_header_color',
+        'ui_sidebar_color',
+        'ui_background_color',
+        'ui_font_family',
+        'company_logo_png',
         'dte_establishment_code',
         'dte_point_of_sale_code',
         'emisor_nombre_comercial',

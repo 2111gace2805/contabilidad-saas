@@ -26,10 +26,12 @@ import { Purchases } from './components/modules/Purchases';
 import { Sales } from './components/modules/Sales';
 import JournalEntryTypes from './components/modules/JournalEntryTypes';
 import CompanyUsers from './components/modules/CompanyUsers';
+import { AuditLogs } from './components/modules/AuditLogs';
+import { companyPreferences } from './lib/api';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
-  const { loading: companyLoading } = useCompany();
+  const { loading: companyLoading, selectedCompany } = useCompany();
   const [activeModule, setActiveModule] = useState<string>('');
 
   // Set initial module based on user role and reset on logout
@@ -45,6 +47,48 @@ function AppContent() {
       setActiveModule('');
     }
   }, [user]);
+
+  useEffect(() => {
+    const applyTheme = async () => {
+      const root = document.documentElement;
+
+      const setDefaults = () => {
+        root.style.setProperty('--ui-accent-color', '#1e293b');
+        root.style.setProperty('--ui-header-bg', '#ffffff');
+        root.style.setProperty('--ui-sidebar-bg', '#1e293b');
+        root.style.setProperty('--ui-app-bg', '#f1f5f9');
+        root.style.setProperty('--ui-font-family', 'Inter, system-ui, -apple-system, Segoe UI, sans-serif');
+      };
+
+      if (!selectedCompany) {
+        setDefaults();
+        return;
+      }
+
+      try {
+        const preferences = await companyPreferences.get();
+        root.style.setProperty('--ui-accent-color', preferences.ui_accent_color || '#1e293b');
+        root.style.setProperty('--ui-header-bg', preferences.ui_header_color || '#ffffff');
+        root.style.setProperty('--ui-sidebar-bg', preferences.ui_sidebar_color || '#1e293b');
+        root.style.setProperty('--ui-app-bg', preferences.ui_background_color || '#f1f5f9');
+
+        const fontMap: Record<string, string> = {
+          inter: 'Inter, system-ui, -apple-system, Segoe UI, sans-serif',
+          system: 'system-ui, -apple-system, Segoe UI, sans-serif',
+          roboto: 'Roboto, Arial, sans-serif',
+          'open-sans': '"Open Sans", Arial, sans-serif',
+          lato: 'Lato, Arial, sans-serif',
+        };
+
+        root.style.setProperty('--ui-font-family', fontMap[preferences.ui_font_family || 'inter'] || fontMap.inter);
+      } catch (error) {
+        console.error('Error applying company theme:', error);
+        setDefaults();
+      }
+    };
+
+    applyTheme();
+  }, [selectedCompany?.id]);
 
   if (authLoading || companyLoading) {
     return (
@@ -117,13 +161,15 @@ function AppContent() {
         return <ModuleManagement />;
       case 'settings':
         return <Settings />;
+      case 'audit-logs':
+        return <AuditLogs />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--ui-app-bg)' }}>
       <Header />
       <div className="flex">
         <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />

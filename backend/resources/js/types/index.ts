@@ -353,6 +353,13 @@ export interface CompanyPreference {
   id: number;
   company_id: number;
   primary_color: 'slate' | 'blue' | 'emerald' | 'indigo' | 'rose' | 'amber';
+  ui_theme_template?: 'default' | 'ocean' | 'emerald-midnight' | 'classic' | null;
+  ui_accent_color?: string | null;
+  ui_header_color?: string | null;
+  ui_sidebar_color?: string | null;
+  ui_background_color?: string | null;
+  ui_font_family?: 'inter' | 'system' | 'roboto' | 'open-sans' | 'lato' | null;
+  company_logo_png?: string | null;
   dte_establishment_code?: string | null;
   dte_point_of_sale_code?: string | null;
   emisor_nombre_comercial?: string | null;
@@ -383,6 +390,28 @@ export interface CompanyPreference {
   smtp_region?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AuditLog {
+  id: number;
+  company_id: number | null;
+  user_id: number | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  description: string | null;
+  metadata?: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  company?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export interface DocumentType {

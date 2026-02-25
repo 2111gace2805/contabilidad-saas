@@ -72,6 +72,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
           title: 'Super Admin',
           items: [
             { id: 'super-admin', label: 'Gestión del Sistema', icon: Shield },
+            { id: 'audit-logs', label: 'Auditoría', icon: FileText },
           ]
         }
       ];
@@ -128,6 +129,7 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
       sections.push({
         title: 'Sistema',
         items: [
+          { id: 'audit-logs', label: 'Logs y Auditoría', icon: FileText },
           { id: 'settings', label: 'Configuración', icon: Settings },
         ]
       });
@@ -140,10 +142,11 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
 
   return (
     <aside
-      className={`bg-slate-800 text-white min-h-screen transition-all duration-300 relative ${isCollapsed ? 'w-16' : 'w-64'
+      className={`text-white min-h-screen transition-all duration-300 relative ${isCollapsed ? 'w-16' : 'w-64'
         }`}
+      style={{ backgroundColor: 'var(--ui-sidebar-bg)' }}
     >
-      <div className="flex items-center justify-between p-4 border-b border-slate-700">
+      <div className="flex items-center justify-between p-4 border-b border-slate-700/60">
         {!isCollapsed && (
           <button
             onClick={togglePin}
@@ -188,10 +191,11 @@ export function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
                     key={item.id}
                     onClick={() => onModuleChange(item.id)}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${isActive
-                      ? 'bg-slate-700 text-white'
+                      ? 'text-white'
                       : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                       } ${isCollapsed ? 'justify-center' : ''}`}
                     title={isCollapsed ? item.label : undefined}
+                    style={isActive ? { backgroundColor: 'var(--ui-accent-color)' } : undefined}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
                     {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}

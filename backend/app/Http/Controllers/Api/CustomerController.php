@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Support\AuditLogger;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -179,6 +180,19 @@ class CustomerController extends Controller
         $data['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva');
 
         $customer = Customer::create($data);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'customer.create',
+            'customer',
+            (string) $customer->id,
+            'Cliente creado',
+            [
+                'name' => $customer->name,
+                'nit' => $customer->nit,
+            ]
+        );
         
         return response()->json($customer, 201);
     }
@@ -254,6 +268,19 @@ class CustomerController extends Controller
         $validated['is_no_sujeto_iva'] = $request->boolean('is_no_sujeto_iva', $customer->is_no_sujeto_iva);
 
         $customer->update($validated);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'customer.update',
+            'customer',
+            (string) $customer->id,
+            'Cliente actualizado',
+            [
+                'name' => $customer->name,
+                'nit' => $customer->nit,
+            ]
+        );
         
         return response()->json($customer);
     }
@@ -276,6 +303,15 @@ class CustomerController extends Controller
 
         try {
             $customer->delete();
+
+            AuditLogger::log(
+                $request,
+                (int) $companyId,
+                'customer.delete',
+                'customer',
+                (string) $id,
+                'Cliente eliminado'
+            );
         } catch (QueryException $exception) {
             if ((string) $exception->getCode() === '23000') {
                 return response()->json([

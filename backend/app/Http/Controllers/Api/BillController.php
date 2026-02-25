@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\InventoryItem;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -236,6 +237,20 @@ class BillController extends Controller
             $this->syncInventoryFromDteItems((int) $companyId, $data['dte_cuerpo_documento']);
         }
         $bill->load('supplier');
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'bill.create',
+            'bill',
+            (string) $bill->id,
+            'Factura de compra creada',
+            [
+                'bill_number' => $bill->bill_number,
+                'total' => $bill->total,
+                'status' => $bill->status,
+            ]
+        );
         
         return response()->json($bill, 201);
     }
@@ -313,6 +328,20 @@ class BillController extends Controller
 
         $bill->update($data);
         $bill->load('supplier');
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'bill.update',
+            'bill',
+            (string) $bill->id,
+            'Factura de compra actualizada',
+            [
+                'bill_number' => $bill->bill_number,
+                'total' => $bill->total,
+                'status' => $bill->status,
+            ]
+        );
         
         return response()->json($bill);
     }
@@ -409,6 +438,21 @@ class BillController extends Controller
         $bill->refresh();
         $bill->load('supplier');
 
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'bill.pay',
+            'bill',
+            (string) $bill->id,
+            'Pago aplicado a factura de compra',
+            [
+                'bill_number' => $bill->bill_number,
+                'paid_amount' => $paymentAmount,
+                'new_balance' => $bill->balance,
+                'status' => $bill->status,
+            ]
+        );
+
         return response()->json([
             'message' => 'Pago aplicado correctamente',
             'bill' => $bill,
@@ -481,8 +525,21 @@ class BillController extends Controller
         if ($bill->status !== 'draft') {
             return response()->json(['message' => 'Only draft bills can be deleted'], 400);
         }
-        
+
+        $billNumber = $bill->bill_number;
         $bill->delete();
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'bill.delete',
+            'bill',
+            (string) $id,
+            'Factura de compra eliminada',
+            [
+                'bill_number' => $billNumber,
+            ]
+        );
         
         return response()->json(['message' => 'Bill deleted successfully']);
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\CompanyPreference;
+use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -275,6 +276,20 @@ class InvoiceController extends Controller
 
         $invoice = Invoice::create($data);
         $invoice->load(['customer', 'paymentMethod']);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'invoice.create',
+            'invoice',
+            (string) $invoice->id,
+            'Factura de venta creada',
+            [
+                'invoice_number' => $invoice->invoice_number,
+                'total' => $invoice->total,
+                'status' => $invoice->status,
+            ]
+        );
         
         return response()->json($invoice, 201);
     }
@@ -372,6 +387,20 @@ class InvoiceController extends Controller
 
         $invoice->update($data);
         $invoice->load(['customer', 'paymentMethod']);
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'invoice.update',
+            'invoice',
+            (string) $invoice->id,
+            'Factura de venta actualizada',
+            [
+                'invoice_number' => $invoice->invoice_number,
+                'total' => $invoice->total,
+                'status' => $invoice->status,
+            ]
+        );
         
         return response()->json($invoice);
     }
@@ -386,7 +415,20 @@ class InvoiceController extends Controller
             return response()->json(['message' => 'Only draft invoices can be deleted'], 400);
         }
         
+        $invoiceNumber = $invoice->invoice_number;
         $invoice->delete();
+
+        AuditLogger::log(
+            $request,
+            (int) $companyId,
+            'invoice.delete',
+            'invoice',
+            (string) $id,
+            'Factura de venta eliminada',
+            [
+                'invoice_number' => $invoiceNumber,
+            ]
+        );
         
         return response()->json(['message' => 'Invoice deleted successfully']);
     }

@@ -27,6 +27,12 @@ class CompanyPreferenceController extends Controller
             ['company_id' => $companyId],
             [
                 'primary_color' => 'slate',
+                'ui_theme_template' => 'default',
+                'ui_accent_color' => '#1e293b',
+                'ui_header_color' => '#ffffff',
+                'ui_sidebar_color' => '#1e293b',
+                'ui_background_color' => '#f1f5f9',
+                'ui_font_family' => 'inter',
                 'dte_establishment_code' => 'M001',
                 'dte_point_of_sale_code' => 'P001',
                 'emisor_tipo_establecimiento' => '02',
@@ -48,6 +54,13 @@ class CompanyPreferenceController extends Controller
 
         $validator = Validator::make($request->all(), [
             'primary_color' => 'required|string|in:slate,blue,emerald,indigo,rose,amber',
+            'ui_theme_template' => 'nullable|string|in:default,ocean,emerald-midnight,classic',
+            'ui_accent_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6})$/'],
+            'ui_header_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6})$/'],
+            'ui_sidebar_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6})$/'],
+            'ui_background_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6})$/'],
+            'ui_font_family' => 'nullable|string|in:inter,system,roboto,open-sans,lato',
+            'company_logo_png' => 'nullable|string',
             'dte_establishment_code' => ['nullable', 'regex:/^[A-Za-z][0-9]{3}$/'],
             'dte_point_of_sale_code' => ['nullable', 'regex:/^[Pp][0-9]{3}$/'],
             'emisor_nombre_comercial' => 'nullable|string|max:255',
@@ -83,6 +96,15 @@ class CompanyPreferenceController extends Controller
         }
 
         $validated = $validator->validated();
+
+        if (isset($validated['company_logo_png']) && $validated['company_logo_png'] !== null && $validated['company_logo_png'] !== '') {
+            if (!str_starts_with((string) $validated['company_logo_png'], 'data:image/png;base64,')) {
+                return response()->json([
+                    'errors' => ['company_logo_png' => ['El logo debe ser una imagen PNG válida en formato base64.']],
+                ], 422);
+            }
+        }
+
         if (isset($validated['dte_establishment_code'])) {
             $validated['dte_establishment_code'] = strtoupper($validated['dte_establishment_code']);
         }
@@ -110,6 +132,7 @@ class CompanyPreferenceController extends Controller
             'Color corporativo actualizado',
             [
                 'primary_color' => $preference->primary_color,
+                'ui_theme_template' => $preference->ui_theme_template,
                 'smtp_provider' => $preference->smtp_provider,
                 'firmador_api_url' => $preference->firmador_api_url,
             ]

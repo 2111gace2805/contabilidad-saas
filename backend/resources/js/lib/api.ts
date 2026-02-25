@@ -628,6 +628,13 @@ export const companyPreferences = {
   },
 };
 
+export const auditLogs = {
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<{ data: Types.AuditLog[]; current_page: number; last_page: number; total: number }>(`/audit-logs${query}`);
+  },
+};
+
 // Document Types API
 export const documentTypes = {
   async getAll() {
