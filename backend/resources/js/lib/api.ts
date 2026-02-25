@@ -383,8 +383,9 @@ export const customers = {
 
 // Suppliers API
 export const suppliers = {
-  async getAll() {
-    return ApiClient.get<Types.Supplier[]>('/suppliers');
+  async getAll(params?: Record<string, any>) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return ApiClient.get<Types.Supplier[] | { data: Types.Supplier[] }>(`/suppliers${query}`);
   },
 
   async getById(id: number) {
@@ -401,6 +402,10 @@ export const suppliers = {
 
   async delete(id: number) {
     return ApiClient.delete(`/suppliers/${id}`);
+  },
+
+  async search(term: string) {
+    return ApiClient.get<Types.Supplier[] | { data: Types.Supplier[] }>(`/suppliers?search=${encodeURIComponent(term)}&per_page=50`);
   },
 };
 

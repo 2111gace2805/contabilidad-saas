@@ -229,7 +229,7 @@ export interface InvoiceLine {
 export interface Bill {
   id: number;
   company_id: number;
-  supplier_id: number;
+  supplier_id: number | null;
   bill_number: string;
   bill_date: string;
   due_date: string;
@@ -237,8 +237,26 @@ export interface Bill {
   tax: string;
   total: string;
   balance: string;
-  status: 'draft' | 'pending' | 'paid' | 'void';
+  status: 'draft' | 'pending' | 'received' | 'partial' | 'paid' | 'overdue' | 'void' | 'cancelled';
   notes: string | null;
+  tipo_dte?: string | null;
+  dte_version?: number | null;
+  dte_ambiente?: string | null;
+  dte_numero_control?: string | null;
+  dte_codigo_generacion?: string | null;
+  dte_fec_emi?: string | null;
+  dte_hor_emi?: string | null;
+  dte_sello_recibido?: string | null;
+  dte_firma_electronica?: string | null;
+  dte_emisor?: Record<string, any> | null;
+  dte_receptor?: Record<string, any> | null;
+  dte_cuerpo_documento?: any[] | null;
+  dte_resumen?: Record<string, any> | null;
+  dte_apendice?: any[] | null;
+  dte_raw_json?: string | null;
+  supplier_name_snapshot?: string | null;
+  supplier_tax_id_snapshot?: string | null;
+  is_fiscal_credit?: boolean;
   created_at: string;
   updated_at: string;
   supplier?: Supplier;

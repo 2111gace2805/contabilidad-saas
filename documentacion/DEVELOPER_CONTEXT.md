@@ -73,5 +73,13 @@ Las partidas utilizan tres identificadores para su control y visualización:
 - `FLUJO_POLIZAS.md`: Lógica del motor contable.
 - `CONFIGURACION_EMPRESA.md`: Estructura del módulo de settings.
 
+## 🧾 Compras con JSON DTE
+
+- El módulo de compras soporta importación de JSON DTE (MH El Salvador) para autocompletar encabezado, emisor, detalle y resumen.
+- Campos críticos no editables cuando se importa JSON: `Correlativo/numeroControl` y `Fecha de emisión`.
+- Si el proveedor del JSON no existe en catálogo, el backend guarda la compra con snapshot del emisor y crea proveedor automáticamente en la empresa.
+- Se persiste metadata DTE en `bills`: tipo DTE, código de generación, sello recibido, firma, bloques JSON (`emisor`, `receptor`, `cuerpoDocumento`, `resumen`, `apendice`) y JSON crudo.
+- Regla fiscal: solo compras con `tipo_dte = "03"` (Comprobante de Crédito Fiscal) alimentan `Libro de Compras`; `tipo_dte = "01"` se registra en compras pero no entra al libro.
+
 ---
 *Última actualización: Febrero 2026*

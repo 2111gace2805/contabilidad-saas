@@ -208,7 +208,9 @@ class ReportController extends Controller
             return response()->json(['message' => 'Company ID required'], 400);
         }
 
-        $query = Bill::where('company_id', $companyId)->with('supplier:id,name,rfc');
+        $query = Bill::where('company_id', $companyId)
+            ->where('is_fiscal_credit', true)
+            ->with('supplier:id,name,rfc');
 
         if ($request->filled('date_from')) {
             $query->whereDate('bill_date', '>=', $request->date_from);
@@ -221,8 +223,8 @@ class ReportController extends Controller
             return [
                 'invoice_date' => $bill->bill_date,
                 'invoice_number' => $bill->bill_number,
-                'supplier_name' => $bill->supplier?->name,
-                'supplier_tax_id' => $bill->supplier?->rfc,
+                'supplier_name' => $bill->supplier?->name ?? $bill->supplier_name_snapshot,
+                'supplier_tax_id' => $bill->supplier?->rfc ?? $bill->supplier_tax_id_snapshot,
                 'subtotal' => (float) $bill->subtotal,
                 'tax_amount' => (float) $bill->tax,
                 'total' => (float) $bill->total,

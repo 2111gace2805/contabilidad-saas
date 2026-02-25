@@ -33,3 +33,9 @@ Para corregir una póliza contabilizada, se debe seguir el flujo de anulación b
 - El modelo `JournalEntry` tiene un hook `boot` que previene actualizaciones si el status original es `POSTED` o `VOID`.
 - El controlador `JournalEntryController` valida el estado antes de permitir `update` o `destroy`.
 - Solo se permite modificar o eliminar pólizas en estado `DRAFT`.
+
+## 5. Compras por Importación JSON (DTE)
+- `Purchases.tsx` ahora soporta carga de JSON DTE para evitar digitación manual de facturas.
+- `BillController` acepta campos DTE (`tipo_dte`, `dte_codigo_generacion`, `dte_numero_control`, `dte_*`) y guarda bloques JSON completos.
+- Si `supplier_id` no viene, se usa snapshot del emisor (`supplier_name_snapshot`, `supplier_tax_id_snapshot`) y se resuelve/crea proveedor automáticamente.
+- `ReportController@purchaseBook` solo incluye compras con `is_fiscal_credit = true` (tipo DTE `03`).
